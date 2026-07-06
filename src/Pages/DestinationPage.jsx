@@ -79,7 +79,7 @@ const allDestinations = [
 		title: 'Polonnaruwa',
 		category: 'Ancient Heritage',
 		badge: 'ANCIENT HERITAGE',
-		image: '/assets/images/polonnaruwa.jpg',
+		image: '/assets/images/Polonnaruwa1.jpg',
 		description:
 			'The medieval capital of Sri Lanka with well-preserved ruins of an ancient civilization dating back centuries.',
 	},
@@ -88,7 +88,7 @@ const allDestinations = [
 		title: 'Nuwara Eliya',
 		category: 'Educational',
 		badge: 'SCENIC HILL COUNTRY',
-		image: '/assets/images/ella.jpg',
+		image: '/assets/images/nuwareliya.jpg',
 		description:
 			'Known as "Little England", this charming hill station features colonial architecture amid misty tea gardens.',
 	},
@@ -97,7 +97,7 @@ const allDestinations = [
 		title: 'Mirissa',
 		category: 'Wildlife',
 		badge: 'WILDLIFE',
-		image: '/assets/images/kalkudah.jpg',
+		image: '/assets/images/mirissa.jpg',
 		description:
 			'A prime whale watching destination where blue whales and dolphins dance along the deep southern waters.',
 	},
@@ -106,7 +106,7 @@ const allDestinations = [
 		title: 'Dambulla Cave Temple',
 		category: 'Ancient Heritage',
 		badge: 'ANCIENT HERITAGE',
-		image: '/assets/images/sigiriya.jpg',
+		image: '/assets/images/dambulla cave.webp',
 		description:
 			'A UNESCO World Heritage site with five caves adorned with 150 Buddha statues and sacred murals.',
 	},
@@ -115,7 +115,7 @@ const allDestinations = [
 		title: 'Bentota',
 		category: 'Golden Beaches',
 		badge: 'GOLDEN BEACHES',
-		image: '/assets/images/kalkudah.jpg',
+		image: '/assets/images/bentota.jpg',
 		description:
 			'A sun-kissed beach paradise on the southwest coast, renowned for water sports and luxury resorts.',
 	},
@@ -126,7 +126,7 @@ const allDestinations = [
 		title: 'Anuradhapura',
 		category: 'Ancient Heritage',
 		badge: 'ANCIENT HERITAGE',
-		image: '/assets/images/polonnaruwa.jpg',
+		image: '/assets/images/Anuradhapura.jpg',
 		description:
 			'The first ancient capital of Sri Lanka, home to sacred Buddhist temples and the revered Sri Maha Bodhi tree.',
 	},
@@ -135,7 +135,7 @@ const allDestinations = [
 		title: 'Arugam Bay',
 		category: 'Golden Beaches',
 		badge: 'GOLDEN BEACHES',
-		image: '/assets/images/trincomalee.jpg',
+		image: '/assets/images/arugambay.jpg',
 		description:
 			'A world-class surfing destination on the east coast with golden sands and an irresistible laid-back vibe.',
 	},
@@ -144,7 +144,7 @@ const allDestinations = [
 		title: 'Pinnawala',
 		category: 'Wildlife',
 		badge: 'WILDLIFE',
-		image: '/assets/images/yala.jpg',
+		image: '/assets/images/pinnawala.jpg',
 		description:
 			'Home to the famous elephant orphanage where herds roam freely and bathe together in the Ma Oya river.',
 	},
@@ -153,7 +153,7 @@ const allDestinations = [
 		title: 'Unawatuna',
 		category: 'Golden Beaches',
 		badge: 'GOLDEN BEACHES',
-		image: '/assets/images/kalkudah.jpg',
+		image: '/assets/images/unawatuna.jpg',
 		description:
 			'A crescent-shaped bay with calm turquoise waters, vibrant coral reefs, and charming beachside cafés.',
 	},
@@ -162,7 +162,7 @@ const allDestinations = [
 		title: "Adam's Peak",
 		category: 'Educational',
 		badge: 'SCENIC HILL COUNTRY',
-		image: '/assets/images/ella.jpg',
+		image: '/assets/images/Adams-Peak.webp',
 		description:
 			'A sacred pilgrimage mountain rising 2,243 m, crowned by the legendary Sri Pada footprint at the summit.',
 	},
@@ -171,7 +171,7 @@ const allDestinations = [
 		title: 'Jaffna',
 		category: 'Cultural',
 		badge: 'CULTURAL',
-		image: '/assets/images/galle.jpg',
+		image: '/assets/images/jaffna.jpg',
 		description:
 			'A vibrant Tamil cultural capital in the far north, brimming with Hindu temples and colonial heritage charm.',
 	},

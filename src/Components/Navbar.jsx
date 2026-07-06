@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const DEFAULT_ROUTES = [
 	{ label: 'Home', path: '/' },
@@ -12,6 +13,8 @@ const DEFAULT_ROUTES = [
 
 export default function Navbar() {
 	const { pathname } = useLocation();
+	const navigate = useNavigate();
+	const { user, isAuthenticated, logout } = useAuth();
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
 	const buildNavLinks = () => {
@@ -46,6 +49,47 @@ export default function Navbar() {
 		}));
 	};
 
+	const handleProfileClick = () => {
+		if (isAuthenticated) {
+			navigate('/profile');
+		} else {
+			navigate('/login');
+		}
+	};
+
+	const renderAvatar = () => {
+		if (isAuthenticated && user?.avatar) {
+			return (
+				<img
+					src={user.avatar}
+					alt={user.name || 'User'}
+					className="w-full h-full object-cover rounded-full"
+				/>
+			);
+		}
+		if (isAuthenticated) {
+			const initials = (user?.name || 'U')
+				.split(' ')
+				.map((n) => n[0])
+				.join('')
+				.toUpperCase()
+				.slice(0, 2);
+			return (
+				<div className="w-full h-full flex items-center justify-center bg-[#d66847]/10 text-[#d66847] text-xs font-bold rounded-full">
+					{initials}
+				</div>
+			);
+		}
+		return (
+			<div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
+					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
+					<circle cx="12" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" />
+				</svg>
+			</div>
+		);
+	};
+
 	const currentNavLinks = buildNavLinks();
 
 	const linkClass = (active, highlight) => {
@@ -77,27 +121,43 @@ export default function Navbar() {
 					))}
 				</nav>
 
-				{/* Mobile Hamburger Button */}
-				<button
-					type="button"
-					aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-					onClick={() => setMobileMenuOpen(prev => !prev)}
-					className="md:hidden flex flex-col items-center justify-center w-10 h-10 gap-1.5 rounded-lg text-slate-700 transition hover:bg-slate-100 focus:outline-none"
-				>
-					{mobileMenuOpen ? (
-						<>
-							<span className="block w-5 h-0.5 bg-current rotate-45 translate-y-[7px] transition-transform duration-200" />
-							<span className="block w-5 h-0.5 bg-current opacity-0 transition-opacity duration-200" />
-							<span className="block w-5 h-0.5 bg-current -rotate-45 -translate-y-[7px] transition-transform duration-200" />
-						</>
-					) : (
-						<>
-							<span className="block w-5 h-0.5 bg-current transition-transform duration-200" />
-							<span className="block w-5 h-0.5 bg-current transition-opacity duration-200" />
-							<span className="block w-5 h-0.5 bg-current transition-transform duration-200" />
-						</>
-					)}
-				</button>
+				{/* Right Side Actions: Avatar + Mob Controls */}
+				<div className="flex items-center gap-4">
+					{/* Profile Avatar */}
+					<div className="relative">
+						<button
+							id="nav-profile-btn"
+							type="button"
+							onClick={handleProfileClick}
+							className="w-9 h-9 sm:w-10 sm:h-10 rounded-full focus:outline-none focus:ring-2 focus:ring-[#d66847]/40 overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95"
+							aria-label="Profile actions"
+						>
+							{renderAvatar()}
+						</button>
+					</div>
+
+					{/* Mobile Hamburger Button */}
+					<button
+						type="button"
+						aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+						onClick={() => setMobileMenuOpen(prev => !prev)}
+						className="md:hidden flex flex-col items-center justify-center w-10 h-10 gap-1.5 rounded-lg text-slate-700 transition hover:bg-slate-100 focus:outline-none"
+					>
+						{mobileMenuOpen ? (
+							<>
+								<span className="block w-5 h-0.5 bg-current rotate-45 translate-y-[7px] transition-transform duration-200" />
+								<span className="block w-5 h-0.5 bg-current opacity-0 transition-opacity duration-200" />
+								<span className="block w-5 h-0.5 bg-current -rotate-45 -translate-y-[7px] transition-transform duration-200" />
+							</>
+						) : (
+							<>
+								<span className="block w-5 h-0.5 bg-current transition-transform duration-200" />
+								<span className="block w-5 h-0.5 bg-current transition-opacity duration-200" />
+								<span className="block w-5 h-0.5 bg-current transition-transform duration-200" />
+							</>
+						)}
+					</button>
+				</div>
 			</div>
 
 			{/* Mobile Drawer — Glassmorphism Overlay */}
@@ -120,6 +180,49 @@ export default function Navbar() {
 								{label}
 							</Link>
 						))}
+
+						{/* Divider & extra mobile links */}
+						<div className="w-full border-t border-slate-100 pt-6 flex flex-col gap-4 items-center">
+							{isAuthenticated ? (
+								<>
+									<Link
+										to="/profile"
+										onClick={() => setMobileMenuOpen(false)}
+										className="text-base font-bold text-slate-700 hover:text-[#d66847] transition-colors"
+									>
+										My Profile
+									</Link>
+									<button
+										type="button"
+										onClick={() => {
+											setMobileMenuOpen(false);
+											logout();
+											navigate('/');
+										}}
+										className="text-base font-bold text-red-500 hover:text-red-600 transition-colors"
+									>
+										Log Out
+									</button>
+								</>
+							) : (
+								<>
+									<Link
+										to="/login"
+										onClick={() => setMobileMenuOpen(false)}
+										className="text-base font-bold text-slate-700 hover:text-[#d66847] transition-colors"
+									>
+										Log In
+									</Link>
+									<Link
+										to="/register"
+										onClick={() => setMobileMenuOpen(false)}
+										className="text-base font-bold text-slate-700 hover:text-[#d66847] transition-colors"
+									>
+										Register
+									</Link>
+								</>
+							)}
+						</div>
 
 						<div className="mt-4 w-full border-t border-slate-100 pt-6">
 							<Link

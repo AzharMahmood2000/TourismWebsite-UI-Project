@@ -1,12 +1,14 @@
+import { Link } from 'react-router-dom';
+
 export default function Footer() {
 	return (
 		<footer id="contact" className="relative w-full block bg-[#111111] text-white">
 			<div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
 				<div className="grid gap-12 lg:grid-cols-[1.3fr_1fr]">
 					<div>
-						<a href="#home" className="text-2xl font-black text-[#d66847]">
+						<Link to="/" className="text-2xl font-black text-[#d66847]">
 							Gamanaya.com
-						</a>
+						</Link>
 
 						<p className="mt-5 max-w-md text-sm leading-7 text-white/77">
 							Designing premium journeys through the pearl of the Indian Ocean. Authenticity, luxury,
@@ -44,36 +46,36 @@ export default function Footer() {
 						<div>
 							<p className="text-xs font-bold uppercase tracking-[0.35em] text-white/50">Explore</p>
 							<div className="mt-4 space-y-3 text-sm text-white/75">
-								<a href="#destinations" className="block transition hover:text-[#d66847]">
+								<Link to="/destinations" className="block transition hover:text-[#d66847]">
 									Destinations
-								</a>
-								<a href="#home" className="block transition hover:text-[#d66847]">
+								</Link>
+								<Link to="/tour-packages" className="block transition hover:text-[#d66847]">
 									Tour Packages
-								</a>
+								</Link>
 							</div>
 						</div>
 
 						<div>
 							<p className="text-xs font-bold uppercase tracking-[0.35em] text-white/50">Gamanaya</p>
 							<div className="mt-4 space-y-3 text-sm text-white/75">
-								<a href="#about" className="block transition hover:text-[#d66847]">
+								<Link to="/about-us" className="block transition hover:text-[#d66847]">
 									About Us
-								</a>
-								<a href="#contact" className="block transition hover:text-[#d66847]">
+								</Link>
+								<Link to="/contact-us" className="block transition hover:text-[#d66847]">
 									Contact Us
-								</a>
+								</Link>
 							</div>
 						</div>
 
 						<div>
 							<p className="text-xs font-bold uppercase tracking-[0.35em] text-white/50">Legal</p>
 							<div className="mt-4 space-y-3 text-sm text-white/75">
-								<a href="#contact" className="block transition hover:text-[#d66847]">
+								<Link to="/contact-us" className="block transition hover:text-[#d66847]">
 									Privacy Policy
-								</a>
-								<a href="#contact" className="block transition hover:text-[#d66847]">
+								</Link>
+								<Link to="/contact-us" className="block transition hover:text-[#d66847]">
 									Terms of Service
-								</a>
+								</Link>
 							</div>
 						</div>
 					</div>

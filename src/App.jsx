@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+
 import Home from './Pages/Home';
 import DestinationPage from './Pages/DestinationPage';
 import DestinationDetailPage from './Pages/DestinationDetailPage';
@@ -10,24 +12,32 @@ import BookingPage from './Pages/BookingPage';
 import BookingSuccessPage from './Pages/BookingSuccessPage';
 import ReviewPage from './Pages/ReviewPage';
 import AllReviewsPage from './Pages/AllReviewsPage';
+import LoginPage from './Pages/LoginPage';
+import RegisterPage from './Pages/RegisterPage';
+import ProfilePage from './Pages/ProfilePage';
 
 export default function App() {
 	return (
-		<BrowserRouter>
-			<Routes>
-				<Route path="/" element={<Home />} />
-				<Route path="/destinations" element={<DestinationPage />} />
-				<Route path="/destination/:id" element={<DestinationDetailPage />} />
-				<Route path="/gallery" element={<GalleryPage />} />
-				<Route path="/tour-packages" element={<TourPackagesPage />} />
-				<Route path="/tour-packages/:id" element={<TourPackagesPage />} />
-				<Route path="/contact-us" element={<ContactPage />} />
-				<Route path="/about-us" element={<AboutPage />} />
-				<Route path="/booking" element={<BookingPage />} />
-				<Route path="/booking-success" element={<BookingSuccessPage />} />
-				<Route path="/write-review" element={<ReviewPage />} />
-				<Route path="/all-reviews" element={<AllReviewsPage />} />
-			</Routes>
-		</BrowserRouter>
+		<AuthProvider>
+			<BrowserRouter>
+				<Routes>
+					<Route path="/" element={<Home />} />
+					<Route path="/destinations" element={<DestinationPage />} />
+					<Route path="/destination/:id" element={<DestinationDetailPage />} />
+					<Route path="/gallery" element={<GalleryPage />} />
+					<Route path="/tour-packages" element={<TourPackagesPage />} />
+					<Route path="/tour-packages/:id" element={<TourPackagesPage />} />
+					<Route path="/contact-us" element={<ContactPage />} />
+					<Route path="/about-us" element={<AboutPage />} />
+					<Route path="/booking" element={<BookingPage />} />
+					<Route path="/booking-success" element={<BookingSuccessPage />} />
+					<Route path="/write-review" element={<ReviewPage />} />
+					<Route path="/all-reviews" element={<AllReviewsPage />} />
+					<Route path="/login" element={<LoginPage />} />
+					<Route path="/register" element={<RegisterPage />} />
+					<Route path="/profile" element={<ProfilePage />} />
+				</Routes>
+			</BrowserRouter>
+		</AuthProvider>
 	);
 }

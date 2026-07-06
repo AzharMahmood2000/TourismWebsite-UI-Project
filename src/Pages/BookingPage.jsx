@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../Components/Navbar';
 import Footer from '../Components/Footer';
+import AuthenticationOverlay from '../Components/AuthenticationOverlay';
+import { useAuth } from '../context/AuthContext';
 
 /* ═══════════════════════════════════════════════════════
    Service line items — each has a label, icon path, and price offset
@@ -92,6 +94,7 @@ const SINGLE_DESTINATION_SERVICES = [
 export default function BookingPage() {
 	const locationState = useLocation().state;
 	const navigate = useNavigate();
+	const { isAuthenticated } = useAuth();
 
 	/* ── Tab mode: 'package' | 'single' ── */
 	const [bookingMode, setBookingMode] = useState('package');
@@ -102,15 +105,51 @@ export default function BookingPage() {
 		Object.fromEntries([...ALL_INCLUSIVE_SERVICES, ...SINGLE_DESTINATION_SERVICES].map((s) => [s.id, true]))
 	);
 
+	/* ── Destination options ── */
+	const DESTINATIONS = [
+		'Sigiriya Rock Fortress',
+		'Temple of the Tooth Relic — Kandy',
+		'Yala National Park Safari',
+		'Galle Dutch Fort',
+		'Horton Plains National Park',
+		'Udawalawe Elephant Sanctuary',
+		'Nine Arches Bridge — Ella',
+		'Mirissa Beach & Whale Watching',
+		'Dambulla Cave Temple',
+		'Polonnaruwa Ancient City',
+		'Nuwara Eliya Tea Country',
+		'Ravana Falls — Ella',
+		'Trincomalee Beaches',
+		'Kumana (Yala East) National Park',
+	];
+
+	/* ── Today's date string for min attribute ── */
+	const todayStr = new Date().toISOString().split('T')[0];
+
 	/* ── Form state ── */
 	const [formData, setFormData] = useState({
 		fullName: '',
-		email: '',
 		phone: '',
+		destination: '',
 		travelDate: '',
 		travelers: 1,
 		notes: '',
 	});
+
+	/* ── Field-level errors ── */
+	const [formErrors, setFormErrors] = useState({});
+
+	const validateForm = () => {
+		const errs = {};
+		if (!formData.fullName.trim()) errs.fullName = 'Full name is required.';
+		if (!formData.phone.trim()) errs.phone = 'Phone number is required.';
+		else if (!/^[\d\s\-+()]{7,15}$/.test(formData.phone.trim()))
+			errs.phone = 'Enter a valid phone number.';
+		if (!formData.destination) errs.destination = 'Please select a destination.';
+		if (!formData.travelDate) errs.travelDate = 'Please choose a travel date.';
+		else if (formData.travelDate < todayStr) errs.travelDate = 'Travel date cannot be in the past.';
+		return errs;
+	};
 
 	useEffect(() => {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -148,8 +187,26 @@ export default function BookingPage() {
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
+		const errs = validateForm();
+		if (Object.keys(errs).length) { setFormErrors(errs); return; }
+		setFormErrors({});
 		navigate('/booking-success');
 	};
+
+	const field = (name) => ({
+		value: formData[name],
+		onChange: (e) => {
+			setFormData((prev) => ({ ...prev, [name]: e.target.value }));
+			if (formErrors[name]) setFormErrors((prev) => ({ ...prev, [name]: undefined }));
+		},
+	});
+
+	const inputCls = (name) =>
+		`w-full border rounded-xl px-4 py-3 text-xs font-semibold placeholder-slate-300 focus:outline-none transition-all duration-200 bg-[#fffcfb] shadow-sm ${
+			formErrors[name]
+				? 'border-red-400 focus:border-red-400 text-red-700'
+				: 'border-slate-200 focus:border-[#d66847] text-slate-700'
+		}`;
 
 	/* ── Sidebar text based on mode ── */
 	const sidebarTitle =
@@ -186,8 +243,18 @@ export default function BookingPage() {
 
 	return (
 		<div className="min-h-screen bg-[#fffaf8] relative w-full block font-sans">
+			{/* ── Authentication Gate Overlay ── */}
+			{!isAuthenticated && <AuthenticationOverlay returnPath="/booking" />}
+
 			<Navbar />
 
+			{/* Booking content — pointer-events disabled while unauthenticated */}
+			<div
+				aria-hidden={!isAuthenticated}
+				{...(!isAuthenticated ? { inert: '' } : {})}
+				className={!isAuthenticated ? 'pointer-events-none select-none' : ''}
+				style={!isAuthenticated ? { userSelect: 'none' } : {}}
+			>
 			<section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
 
 				{/* ════════════════════════════════════════════
@@ -385,96 +452,141 @@ export default function BookingPage() {
 								</div>
 							</div>
 
-							<form onSubmit={handleSubmit} className="mt-8 space-y-5">
+							<form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
 
-								{/* Name & Email */}
+								{/* ── Row 1: Full Name + Phone ── */}
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+									{/* Full Name */}
 									<div>
-										<label className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
-											Full Name
+										<label htmlFor="bk-fullname" className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
+											Full Name <span className="text-[#d66847]" aria-hidden>*</span>
 										</label>
 										<input
+											id="bk-fullname"
 											type="text"
-											required
-											value={formData.fullName}
-											onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
 											placeholder="Ishara Perera"
-											className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-xs font-semibold text-slate-700 placeholder-slate-300 focus:border-[#d66847] focus:outline-none transition-colors bg-[#fffcfb] shadow-sm"
+											autoComplete="name"
+											{...field('fullName')}
+											className={inputCls('fullName')}
 										/>
+										{formErrors.fullName && (
+											<p className="mt-1.5 text-[10px] text-red-500 font-semibold flex items-center gap-1">
+												<span aria-hidden>⚠</span> {formErrors.fullName}
+											</p>
+										)}
 									</div>
-									<div>
-										<label className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
-											Email Address
-										</label>
-										<input
-											type="email"
-											required
-											value={formData.email}
-											onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-											placeholder="example@gmail.com"
-											className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-xs font-semibold text-slate-700 placeholder-slate-300 focus:border-[#d66847] focus:outline-none transition-colors bg-[#fffcfb] shadow-sm"
-										/>
-									</div>
-								</div>
 
-								{/* Phone & Travel Date */}
-								<div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+									{/* Phone Number */}
 									<div>
-										<label className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
-											Phone Number
+										<label htmlFor="bk-phone" className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
+											Phone Number <span className="text-[#d66847]" aria-hidden>*</span>
 										</label>
 										<input
+											id="bk-phone"
 											type="tel"
-											required
-											value={formData.phone}
-											onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-											placeholder="077-3487980"
-											className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-xs font-semibold text-slate-700 placeholder-slate-300 focus:border-[#d66847] focus:outline-none transition-colors bg-[#fffcfb] shadow-sm"
+											placeholder="077-348 7980"
+											autoComplete="tel"
+											{...field('phone')}
+											className={inputCls('phone')}
 										/>
+										{formErrors.phone && (
+											<p className="mt-1.5 text-[10px] text-red-500 font-semibold flex items-center gap-1">
+												<span aria-hidden>⚠</span> {formErrors.phone}
+											</p>
+										)}
 									</div>
+								</div>
+
+								{/* ── Row 2: Destination + Travel Date ── */}
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+									{/* Destination */}
 									<div>
-										<label className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
-											Preferred Travel Date
+										<label htmlFor="bk-destination" className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
+											Destination <span className="text-[#d66847]" aria-hidden>*</span>
+										</label>
+										<div className="relative">
+											<select
+												id="bk-destination"
+												{...field('destination')}
+												className={`${inputCls('destination')} appearance-none pr-10 bg-[#fffcfb]`}
+											>
+												<option value="">Select a destination…</option>
+												{DESTINATIONS.map((d) => (
+													<option key={d} value={d}>{d}</option>
+												))}
+											</select>
+											{/* Chevron icon */}
+											<svg
+												viewBox="0 0 20 20" fill="currentColor"
+												className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+												aria-hidden
+											>
+												<path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+											</svg>
+										</div>
+										{formErrors.destination && (
+											<p className="mt-1.5 text-[10px] text-red-500 font-semibold flex items-center gap-1">
+												<span aria-hidden>⚠</span> {formErrors.destination}
+											</p>
+										)}
+									</div>
+
+									{/* Travel Date */}
+									<div>
+										<label htmlFor="bk-date" className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
+											Preferred Travel Date <span className="text-[#d66847]" aria-hidden>*</span>
 										</label>
 										<input
+											id="bk-date"
 											type="date"
-											required
-											value={formData.travelDate}
-											onChange={(e) => setFormData({ ...formData, travelDate: e.target.value })}
-											className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-xs font-semibold text-slate-700 focus:border-[#d66847] focus:outline-none transition-colors bg-[#fffcfb] shadow-sm"
+											min={todayStr}
+											{...field('travelDate')}
+											className={inputCls('travelDate')}
 										/>
+										{formErrors.travelDate && (
+											<p className="mt-1.5 text-[10px] text-red-500 font-semibold flex items-center gap-1">
+												<span aria-hidden>⚠</span> {formErrors.travelDate}
+											</p>
+										)}
 									</div>
 								</div>
 
-								{/* Number of Travelers */}
+								{/* ── Number of Travelers (full width) ── */}
 								<div>
-									<label className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
-										Number of Travelers
+									<label htmlFor="bk-travelers" className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
+										Number of Travelers <span className="text-[#d66847]" aria-hidden>*</span>
 									</label>
-									<select
-										value={formData.travelers}
-										onChange={handleTravelerChange}
-										className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white focus:border-[#d66847] focus:outline-none transition-colors shadow-sm"
-									>
-										<option value={1}>1 Person</option>
-										<option value={2}>2 People</option>
-										<option value={3}>3 People</option>
-										<option value={4}>4 People</option>
-										<option value={5}>5 People</option>
-										<option value={6}>6+ People</option>
-									</select>
+									<div className="relative">
+										<select
+											id="bk-travelers"
+											value={formData.travelers}
+											onChange={handleTravelerChange}
+											className="w-full border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-700 bg-[#fffcfb] focus:border-[#d66847] focus:outline-none transition-all duration-200 shadow-sm appearance-none pr-10"
+										>
+											<option value={1}>1 Person</option>
+											<option value={2}>2 People</option>
+											<option value={3}>3 People</option>
+											<option value={4}>4 People</option>
+											<option value={5}>5 People</option>
+											<option value={6}>6+ People</option>
+										</select>
+										<svg viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" aria-hidden>
+											<path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+										</svg>
+									</div>
 								</div>
 
-								{/* Custom Requests */}
+								{/* ── Special Requests (optional) ── */}
 								<div>
-									<label className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
-										Custom Requests / Notes
+									<label htmlFor="bk-notes" className="block text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-2">
+										Special Requests
+										<span className="ml-1.5 text-[9px] font-medium text-slate-400 normal-case tracking-normal">— optional</span>
 									</label>
 									<textarea
-										value={formData.notes}
-										onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-										placeholder="Mention any dietary requirements, special occasions, or accessibility needs..."
-										className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-xs font-semibold text-slate-700 placeholder-slate-300 h-28 focus:border-[#d66847] focus:outline-none transition-colors bg-[#fffcfb] shadow-sm resize-none"
+										id="bk-notes"
+										{...field('notes')}
+										placeholder="Dietary requirements, accessibility needs, special occasions…"
+										className="w-full border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-700 placeholder-slate-300 h-28 focus:border-[#d66847] focus:outline-none transition-all duration-200 bg-[#fffcfb] shadow-sm resize-none"
 									/>
 								</div>
 
@@ -531,10 +643,18 @@ export default function BookingPage() {
 									</div>
 								</div>
 
+								{/* ── Helper note ── */}
+								<p className="flex items-center gap-2 text-[10px] text-slate-400 font-medium leading-relaxed">
+									<svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-[#d66847] shrink-0" aria-hidden>
+										<path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+									</svg>
+									Booking confirmation will be sent to your registered account email.
+								</p>
+
 								{/* Submit */}
 								<button
 									type="submit"
-									className="w-full mt-6 py-3.5 bg-[#1e1e1e] hover:bg-[#d66847] text-white text-xs font-semibold uppercase tracking-widest rounded-xl transition-all duration-300 shadow-sm active:scale-95"
+									className="w-full mt-2 py-3.5 bg-[#1e1e1e] hover:bg-[#d66847] text-white text-xs font-semibold uppercase tracking-widest rounded-xl transition-all duration-300 shadow-sm active:scale-95"
 								>
 									Submit Booking Inquiry
 								</button>
@@ -545,6 +665,7 @@ export default function BookingPage() {
 			</section>
 
 			<Footer />
+			</div>{/* end inert content wrapper */}
 		</div>
 	);
 }

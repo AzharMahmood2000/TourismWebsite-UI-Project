@@ -70,20 +70,20 @@ export default function HomeHero() {
 	};
 
 	const formattedTime = systemTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-	const backgroundAsset = isNightView ? '/assets/images/Night%20View.png' : '/assets/images/Day%20view.png';
+	const backgroundAsset = isNightView ? '/assets/images/Night View.png' : '/assets/images/Day view.png';
 
 	return (
 		<header className="relative isolate w-full h-[75vh] min-h-[600px] overflow-hidden">
 			{/* Day View Background */}
 			<div
 				className={`absolute inset-0 z-0 bg-center bg-no-repeat [background-size:100%_100%] transition-opacity duration-1000 ease-in-out ${!isNightView ? 'opacity-100' : 'opacity-0'}`}
-				style={{ backgroundImage: "url('/assets/images/Day%20view.png')" }}
+				style={{ backgroundImage: "url('/assets/images/Day view.png')" }}
 			/>
 
 			{/* Night View Background */}
 			<div
 				className={`absolute inset-0 z-0 bg-center bg-no-repeat [background-size:100%_100%] transition-opacity duration-1000 ease-in-out ${isNightView ? 'opacity-100' : 'opacity-0'}`}
-				style={{ backgroundImage: "url('/assets/images/Night%20View.png')" }}
+				style={{ backgroundImage: "url('/assets/images/Night View.png')" }}
 			/>
 
 			<div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-black/55 via-black/15 to-transparent" />

@@ -106,7 +106,7 @@ const allDestinations = [
 		title: 'Dambulla Cave Temple',
 		category: 'Ancient Heritage',
 		badge: 'ANCIENT HERITAGE',
-		image: '/assets/images/dambulla cave.webp',
+		image: '/assets/images/dambulla_cave.webp',
 		description:
 			'A UNESCO World Heritage site with five caves adorned with 150 Buddha statues and sacred murals.',
 	},
@@ -162,7 +162,7 @@ const allDestinations = [
 		title: "Adam's Peak",
 		category: 'Educational',
 		badge: 'SCENIC HILL COUNTRY',
-		image: '/assets/images/Adams-Peak.webp',
+		image: '/assets/images/adams_peak.webp',
 		description:
 			'A sacred pilgrimage mountain rising 2,243 m, crowned by the legendary Sri Pada footprint at the summit.',
 	},

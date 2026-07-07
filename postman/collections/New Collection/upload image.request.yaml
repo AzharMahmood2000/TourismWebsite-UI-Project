@@ -1,0 +1,17 @@
+$kind: http-request
+name: 'upload image'
+method: POST
+url: 'http://localhost:5000/api/upload'
+order: 1000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{vault:bearer_token_03up}}'
+body:
+  type: formdata
+  content:
+    - key: image
+      type: file
+      src: ''
+      description: 'Image file to upload (jpg, jpeg, png, webp, max 5MB)'

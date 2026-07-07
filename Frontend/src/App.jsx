@@ -15,6 +15,10 @@ import AllReviewsPage from './Pages/AllReviewsPage';
 import LoginPage from './Pages/LoginPage';
 import RegisterPage from './Pages/RegisterPage';
 import ProfilePage from './Pages/ProfilePage';
+import Dashboard from './Pages/Dashboard';
+import ManageTourPackage from './Pages/managetourpackage';
+import ManageReview from './Pages/managereview';
+import ManageMessages from './Pages/managemessages';
 
 export default function App() {
 	return (
@@ -36,6 +40,10 @@ export default function App() {
 					<Route path="/login" element={<LoginPage />} />
 					<Route path="/register" element={<RegisterPage />} />
 					<Route path="/profile" element={<ProfilePage />} />
+					<Route path="/dashboard" element={<Dashboard />} />
+					<Route path="/manage-packages" element={<ManageTourPackage />} />
+					<Route path="/manage-reviews" element={<ManageReview />} />
+					<Route path="/manage-messages" element={<ManageMessages />} />
 				</Routes>
 			</BrowserRouter>
 		</AuthProvider>

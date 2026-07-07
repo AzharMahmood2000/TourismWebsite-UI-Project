@@ -1,27 +1,58 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const connectDB = require('./config/db.js');
+const express = require("express");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const helmet = require("helmet");
+const path = require("path");
+const connectDB = require("./config/db");
+
+const authRoutes = require("./routes/authRoutes");
+const userRoutes = require("./routes/userRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
+const destinationRoutes = require("./routes/destinationRoutes");
+const packageRoutes = require("./routes/packageRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
+const bookingRoutes = require("./routes/bookingRoutes");
+const contactRoutes = require("./routes/contactRoutes");
 
 dotenv.config();
+
 connectDB();
 
 const app = express();
 
-app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// 🌟 Default Root Route: Browser-la direct-ah hit panna indha check msg varum
-app.get('/', (req, res) => {
-    res.send("<h1>🌍 Gamanaya Backend Server Running Successfully!</h1><p>Database and API layer completely connected.</p>");
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+  })
+);
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+app.get("/", (req, res) => {
+  res.send("Backend connected successfully");
 });
 
-// Sample JSON Test Route
-app.get('/api/test', (req, res) => {
-    res.json({ status: "success", message: "Gamanaya Backend API running successfully! 🌍✈️" });
-});
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/upload", uploadRoutes);
+app.use("/api/destinations", destinationRoutes);
+app.use("/api/packages", packageRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/contact", contactRoutes);
 
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
-    console.log(`🎯 Server actively running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

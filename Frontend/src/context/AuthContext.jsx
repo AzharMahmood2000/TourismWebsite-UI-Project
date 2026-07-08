@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback } from 'react';
 
 const AuthContext = createContext(null);
 
-const STORAGE_KEY = 'gamanaya_user';
+const STORAGE_KEY = 'userInfo';
 
 function loadUser() {
   try {

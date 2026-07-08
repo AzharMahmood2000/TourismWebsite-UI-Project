@@ -16,15 +16,21 @@ import LoginPage from './Pages/LoginPage';
 import RegisterPage from './Pages/RegisterPage';
 import ProfilePage from './Pages/ProfilePage';
 import Dashboard from './Pages/Dashboard';
-import ManageTourPackage from './Pages/managetourpackage';
-import ManageReview from './Pages/managereview';
+import ManagePackages from './Pages/managetourpackage';
+import ManageReviews from './Pages/managereview';
 import ManageMessages from './Pages/managemessages';
+import ManageUsers from './Pages/ManageUsers';
+import ManageDestinations from './Pages/managedestination';
+import ManageBookings from './Pages/managebookings';
+import NotFound from './Pages/NotFound';
+import { Navigate } from 'react-router-dom';
 
 export default function App() {
 	return (
 		<AuthProvider>
 			<BrowserRouter>
 				<Routes>
+					{/* Public Routes */}
 					<Route path="/" element={<Home />} />
 					<Route path="/destinations" element={<DestinationPage />} />
 					<Route path="/destination/:id" element={<DestinationDetailPage />} />
@@ -40,10 +46,17 @@ export default function App() {
 					<Route path="/login" element={<LoginPage />} />
 					<Route path="/register" element={<RegisterPage />} />
 					<Route path="/profile" element={<ProfilePage />} />
-					<Route path="/dashboard" element={<Dashboard />} />
-					<Route path="/manage-packages" element={<ManageTourPackage />} />
-					<Route path="/manage-reviews" element={<ManageReview />} />
-					<Route path="/manage-messages" element={<ManageMessages />} />
+					<Route path="*" element={<NotFound />} />
+
+					{/* Admin Routes */}
+					<Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+					<Route path="/admin/dashboard" element={<Dashboard />} />
+					<Route path="/admin/packages" element={<ManagePackages />} />
+					<Route path="/admin/reviews" element={<ManageReviews />} />
+					<Route path="/admin/messages" element={<ManageMessages />} />
+					<Route path="/admin/destinations" element={<ManageDestinations />} />
+					<Route path="/admin/bookings" element={<ManageBookings />} />
+					<Route path="/admin/users" element={<ManageUsers />} />
 				</Routes>
 			</BrowserRouter>
 		</AuthProvider>

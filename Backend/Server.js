@@ -38,6 +38,15 @@ app.use(
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+app.set("etag", false);
+
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  next();
+});
+
 app.get("/", (req, res) => {
   res.send("Backend connected successfully");
 });

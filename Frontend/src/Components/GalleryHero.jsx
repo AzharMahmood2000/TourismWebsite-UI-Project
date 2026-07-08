@@ -1,16 +1,38 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { destinationRegistry } from '../data';
+import API_BASE_URL from '../api/api';
 
 export default function GalleryHero({ onDestinationChange }) {
 	const navigate = useNavigate();
 	const [searchParams] = useSearchParams();
 	const [isNightView, setIsNightView] = useState(false);
+	const [destinations, setDestinations] = useState([]);
+	const [loading, setLoading] = useState(true);
 
 	const placeQuery = searchParams.get('place') || '';
-	const activeDestination = destinationRegistry.find(
-		(d) => d.id.toLowerCase() === placeQuery.toLowerCase()
-	) || destinationRegistry[0];
+	const activeDestination = destinations.length > 0 
+		? (destinations.find((d) => d.slug === placeQuery.toLowerCase() || d._id === placeQuery) || destinations[0])
+		: null;
+
+	const getImageSrc = (img) => {
+		if (!img || typeof img !== 'string') return '';
+		if (img.startsWith('http') || img.startsWith('data:')) return img;
+		return `${API_BASE_URL}${img.startsWith('/') ? img : `/${img}`}`;
+	};
+
+	useEffect(() => {
+		const fetchDestinations = async () => {
+			try {
+				setLoading(true);
+				const res = await fetch(`${API_BASE_URL}/api/destinations`);
+				const data = await res.json();
+				if (res.ok) setDestinations(data.filter((d) => d.isActive !== false));
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchDestinations();
+	}, []);
 
 	useEffect(() => {
 		const syncSystemTime = () => {
@@ -23,7 +45,13 @@ export default function GalleryHero({ onDestinationChange }) {
 		return () => clearInterval(timerId);
 	}, []);
 
-	const activeTrackIndex = destinationRegistry.findIndex(d => d.id === activeDestination.id);
+	const activeTrackIndex = destinations.length > 0 && activeDestination 
+		? destinations.findIndex(d => d._id === activeDestination._id) 
+		: 0;
+
+	if (loading) return <div className="h-[100dvh] bg-black flex items-center justify-center text-white">Loading Gallery...</div>;
+	if (destinations.length === 0) return <div className="h-[100dvh] bg-black flex items-center justify-center text-white">No destinations found.</div>;
+
 
 	return (
 		<header className="relative isolate w-full h-[100dvh] min-h-[600px] overflow-hidden bg-black">
@@ -31,11 +59,11 @@ export default function GalleryHero({ onDestinationChange }) {
 				className="absolute inset-0 z-0 flex w-full h-full transition-transform duration-700 ease-in-out"
 				style={{ transform: `translateX(-${activeTrackIndex * 100}%)` }}
 			>
-				{destinationRegistry.map(location => (
+				{destinations.map(location => (
 					<div
-						key={location.id}
-						className="w-full h-full flex-shrink-0 bg-center bg-no-repeat [background-size:100%_100%]"
-						style={{ backgroundImage: `url('${isNightView ? location.nightBgUrl : location.dayBgUrl}')` }}
+						key={location._id}
+						className="w-full h-full flex-shrink-0 bg-center bg-no-repeat [background-size:100%_100%] transition-opacity duration-1000 opacity-80"
+						style={{ backgroundImage: `url('${getImageSrc(location.image)}')` }}
 					/>
 				))}
 			</div>
@@ -86,12 +114,12 @@ export default function GalleryHero({ onDestinationChange }) {
 			</div>
 
 			<div className="absolute z-20 bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 w-full max-w-6xl mx-auto px-4 md:px-8">
-				{destinationRegistry.map(location => {
-					const isActive = activeDestination.id === location.id;
+				{destinations.map(location => {
+					const isActive = activeDestination && activeDestination._id === location._id;
 					
 					return (
 						<button
-							key={location.id}
+							key={location._id}
 							type="button"
 							onClick={() => {
 								if (onDestinationChange) onDestinationChange(location);
@@ -106,7 +134,7 @@ export default function GalleryHero({ onDestinationChange }) {
 						>
 							<div 
 								className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-								style={{ backgroundImage: `url('${location.thumbnail}')` }}
+								style={{ backgroundImage: `url('${getImageSrc(location.image)}')` }}
 							/>
 
 							<div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/90 via-black/40 to-transparent" />

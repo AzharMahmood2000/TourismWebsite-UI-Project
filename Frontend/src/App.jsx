@@ -33,7 +33,7 @@ export default function App() {
 					{/* Public Routes */}
 					<Route path="/" element={<Home />} />
 					<Route path="/destinations" element={<DestinationPage />} />
-					<Route path="/destination/:id" element={<DestinationDetailPage />} />
+					<Route path="/destination/:destinationParam" element={<DestinationDetailPage />} />
 					<Route path="/gallery" element={<GalleryPage />} />
 					<Route path="/tour-packages" element={<TourPackagesPage />} />
 					<Route path="/tour-packages/:id" element={<TourPackagesPage />} />

@@ -7,176 +7,6 @@ import Footer from '../Components/Footer';
    Destination Data — 18 entries across 5 categories
    All image paths point to /assets/images/<clean-name>
    ═══════════════════════════════════════════════════════ */
-const allDestinations = [
-	/* ── Page 1 ── */
-	{
-		id: 1,
-		title: 'Sigiriya',
-		category: 'Ancient Heritage',
-		badge: 'ANCIENT HERITAGE',
-		image: '/assets/images/sigiriya.jpg',
-		description:
-			'The ancient lion rock fortress, a marvel of 5th-century engineering and art, rising dramatically above the central plains.',
-	},
-	{
-		id: 2,
-		title: 'Ambuluwewa Tower',
-		category: 'Educational',
-		badge: 'SCENIC HILL COUNTRY',
-		image: '/assets/images/Ambuluwewa/1.jpg',
-		description:
-			'A unique biodiversity complex and tourist harbor rising dramatically above Gampola with panoramic 360-degree views.',
-	},
-	{
-		id: 3,
-		title: 'Kalkudah Beach',
-		category: 'Golden Beaches',
-		badge: 'GOLDEN BEACHES',
-		image: '/assets/images/kalkudah.jpg',
-		description:
-			'A secluded stretch of white sand on the east coast, offering calm waters and untouched tropical serenity.',
-	},
-	{
-		id: 4,
-		title: 'Yala National Park',
-		category: 'Wildlife',
-		badge: 'WILDLIFE',
-		image: '/assets/images/yala.jpg',
-		description:
-			"Sri Lanka's premier wildlife sanctuary, home to a high density of leopards and over 200 bird species.",
-	},
-	{
-		id: 5,
-		title: 'Galle Fort',
-		category: 'Cultural',
-		badge: 'CULTURAL',
-		image: '/assets/images/galle.jpg',
-		description:
-			'A UNESCO World Heritage site where 17th-century Dutch architecture meets vibrant coastal living.',
-	},
-	{
-		id: 6,
-		title: 'Kandy',
-		category: 'Cultural',
-		badge: 'CULTURAL',
-		image: '/assets/images/kandy.jpg',
-		description:
-			'The spiritual heart of the island, a sacred city surrounded by hills and home to the Temple of the Tooth.',
-	},
-
-	/* ── Page 2 ── */
-	{
-		id: 7,
-		title: 'Trincomalee',
-		category: 'Golden Beaches',
-		badge: 'GOLDEN BEACHES',
-		image: '/assets/images/trincomalee.jpg',
-		description:
-			'A harbour city blessed with pristine beaches and coral reefs on the northeastern coast of the island.',
-	},
-	{
-		id: 8,
-		title: 'Polonnaruwa',
-		category: 'Ancient Heritage',
-		badge: 'ANCIENT HERITAGE',
-		image: '/assets/images/Polonnaruwa1.jpg',
-		description:
-			'The medieval capital of Sri Lanka with well-preserved ruins of an ancient civilization dating back centuries.',
-	},
-	{
-		id: 9,
-		title: 'Nuwara Eliya',
-		category: 'Educational',
-		badge: 'SCENIC HILL COUNTRY',
-		image: '/assets/images/nuwareliya.jpg',
-		description:
-			'Known as "Little England", this charming hill station features colonial architecture amid misty tea gardens.',
-	},
-	{
-		id: 10,
-		title: 'Mirissa',
-		category: 'Wildlife',
-		badge: 'WILDLIFE',
-		image: '/assets/images/mirissa.jpg',
-		description:
-			'A prime whale watching destination where blue whales and dolphins dance along the deep southern waters.',
-	},
-	{
-		id: 11,
-		title: 'Dambulla Cave Temple',
-		category: 'Ancient Heritage',
-		badge: 'ANCIENT HERITAGE',
-		image: '/assets/images/dambulla_cave.webp',
-		description:
-			'A UNESCO World Heritage site with five caves adorned with 150 Buddha statues and sacred murals.',
-	},
-	{
-		id: 12,
-		title: 'Bentota',
-		category: 'Golden Beaches',
-		badge: 'GOLDEN BEACHES',
-		image: '/assets/images/bentota.jpg',
-		description:
-			'A sun-kissed beach paradise on the southwest coast, renowned for water sports and luxury resorts.',
-	},
-
-	/* ── Page 3 ── */
-	{
-		id: 13,
-		title: 'Anuradhapura',
-		category: 'Ancient Heritage',
-		badge: 'ANCIENT HERITAGE',
-		image: '/assets/images/Anuradhapura.jpg',
-		description:
-			'The first ancient capital of Sri Lanka, home to sacred Buddhist temples and the revered Sri Maha Bodhi tree.',
-	},
-	{
-		id: 14,
-		title: 'Arugam Bay',
-		category: 'Golden Beaches',
-		badge: 'GOLDEN BEACHES',
-		image: '/assets/images/arugambay.jpg',
-		description:
-			'A world-class surfing destination on the east coast with golden sands and an irresistible laid-back vibe.',
-	},
-	{
-		id: 15,
-		title: 'Pinnawala',
-		category: 'Wildlife',
-		badge: 'WILDLIFE',
-		image: '/assets/images/pinnawala.jpg',
-		description:
-			'Home to the famous elephant orphanage where herds roam freely and bathe together in the Ma Oya river.',
-	},
-	{
-		id: 16,
-		title: 'Unawatuna',
-		category: 'Golden Beaches',
-		badge: 'GOLDEN BEACHES',
-		image: '/assets/images/unawatuna.jpg',
-		description:
-			'A crescent-shaped bay with calm turquoise waters, vibrant coral reefs, and charming beachside cafés.',
-	},
-	{
-		id: 17,
-		title: "Adam's Peak",
-		category: 'Educational',
-		badge: 'SCENIC HILL COUNTRY',
-		image: '/assets/images/adams_peak.webp',
-		description:
-			'A sacred pilgrimage mountain rising 2,243 m, crowned by the legendary Sri Pada footprint at the summit.',
-	},
-	{
-		id: 18,
-		title: 'Jaffna',
-		category: 'Cultural',
-		badge: 'CULTURAL',
-		image: '/assets/images/jaffna.jpg',
-		description:
-			'A vibrant Tamil cultural capital in the far north, brimming with Hindu temples and colonial heritage charm.',
-	},
-];
-
 /* ─── filter pill labels ─── */
 const categories = [
 	'All',
@@ -197,16 +27,7 @@ const badgeColorMap = {
 };
 
 const ITEMS_PER_PAGE = 6;
-
-// Helper to resolve clean URL slug IDs matching the destinationRegistry
-const getSlug = (title) => {
-	const t = title.toLowerCase();
-	if (t.includes('sigiriya')) return 'sigiriya';
-	if (t.includes('ella') || t.includes('ambuluwewa')) return 'ambuluwewa';
-	if (t.includes('kalkudah')) return 'kalkudah';
-	if (t.includes('yala')) return 'yala';
-	return t.replace(/\s+/g, '-');
-};
+import API_BASE_URL from '../api/api';
 
 /* ═══════════════════════════════════════════════════════
    DestinationPage Component
@@ -214,6 +35,9 @@ const getSlug = (title) => {
 export default function DestinationPage() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [currentPage, setCurrentPage] = useState(1);
+	const [allDestinations, setAllDestinations] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
 
 	const categoryQuery = searchParams.get('category');
 	
@@ -226,6 +50,23 @@ export default function DestinationPage() {
 		return matched || 'All';
 	})();
 
+	useEffect(() => {
+		const fetchDestinations = async () => {
+			try {
+				setLoading(true);
+				const res = await fetch(`${API_BASE_URL}/api/destinations`);
+				if (!res.ok) throw new Error('Failed to fetch destinations');
+				const data = await res.json();
+				setAllDestinations(data.filter((d) => d.isActive !== false));
+			} catch (err) {
+				setError(err.message);
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchDestinations();
+	}, []);
+
 	/* Scroll to top on activeCategory change */
 	useEffect(() => {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -235,7 +76,7 @@ export default function DestinationPage() {
 	const filtered =
 		activeCategory === 'All'
 			? allDestinations
-			: allDestinations.filter((d) => d.category === activeCategory);
+			: allDestinations.filter((d) => d.category && d.category.toLowerCase() === activeCategory.toLowerCase());
 
 	/* ─── pagination ─── */
 	const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
@@ -250,6 +91,12 @@ export default function DestinationPage() {
 		} else {
 			setSearchParams({ category: cat });
 		}
+	};
+
+	const getImageSrc = (img) => {
+		if (!img || typeof img !== 'string') return '';
+		if (img.startsWith('http') || img.startsWith('data:')) return img;
+		return `${API_BASE_URL}${img.startsWith('/') ? img : `/${img}`}`;
 	};
 
 	/* ═══════════════════════════════════════════════════════
@@ -357,7 +204,19 @@ export default function DestinationPage() {
 
 				{/* ── Destination Card Grid ── */}
 				<section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-					{paginated.length === 0 ? (
+					{loading ? (
+						<div className="py-24 text-center">
+							<p className="text-lg font-medium text-slate-400">
+								Loading destinations...
+							</p>
+						</div>
+					) : error ? (
+						<div className="py-24 text-center">
+							<p className="text-lg font-medium text-red-500">
+								{error}
+							</p>
+						</div>
+					) : paginated.length === 0 ? (
 						<div className="py-24 text-center">
 							<p className="text-lg font-medium text-slate-400">
 								No destinations found in this category yet.
@@ -367,13 +226,13 @@ export default function DestinationPage() {
 						<div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
 							{paginated.map((dest) => (
 								<article
-									key={dest.id}
+									key={dest._id || dest.id}
 									className="group overflow-hidden rounded-2xl bg-white shadow-[0_8px_30px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_50px_rgba(15,23,42,0.14)]"
 								>
 									{/* Card image */}
 									<div className="relative overflow-hidden">
 										<img
-											src={dest.image}
+											src={getImageSrc(dest.image)}
 											alt={dest.title}
 											loading="lazy"
 											className="w-full h-48 md:h-52 object-cover block transition-transform duration-500 group-hover:scale-105"
@@ -381,10 +240,10 @@ export default function DestinationPage() {
 										{/* Category badge */}
 										<span
 											className={`absolute right-4 top-4 rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur-sm ${
-												badgeColorMap[dest.category] || 'bg-slate-700/85'
+												badgeColorMap[dest.category] || 'bg-[#d66847]/90'
 											}`}
 										>
-											{dest.badge}
+											{dest.category}
 										</span>
 									</div>
 
@@ -393,11 +252,11 @@ export default function DestinationPage() {
 										<h3 className="text-lg font-bold text-slate-900">
 											{dest.title}
 										</h3>
-										<p className="mt-2 text-sm leading-relaxed text-slate-500">
+										<p className="mt-2 text-sm leading-relaxed text-slate-500 line-clamp-3">
 											{dest.description}
 										</p>
 										<Link
-											to={`/destination/${getSlug(dest.title)}`}
+											to={`/destination/${dest._id}`}
 											className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#d66847] transition-all duration-200 hover:gap-3"
 										>
 											Discover more{' '}

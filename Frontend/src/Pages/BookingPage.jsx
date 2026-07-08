@@ -91,21 +91,34 @@ const SINGLE_DESTINATION_SERVICES = [
 /* ═══════════════════════════════════════════════════════
    BookingPage Component
    ═══════════════════════════════════════════════════════ */
+import API_BASE_URL from '../api/api';
+
 export default function BookingPage() {
-	const locationState = useLocation().state;
+	const loc = useLocation();
+	const locationState = loc.state;
+	const searchParams = new URLSearchParams(loc.search);
+	const queryType = searchParams.get('type');
+	const queryDestinationId = searchParams.get('destinationId');
+	const queryPackageId = searchParams.get('packageId');
 	const navigate = useNavigate();
 	const { isAuthenticated } = useAuth();
 
 	/* ── Tab mode: 'package' | 'single' ── */
-	const [bookingMode, setBookingMode] = useState('package');
+	const [bookingMode, setBookingMode] = useState(queryType === 'single' ? 'single' : 'package');
 	const [isTransitioning, setIsTransitioning] = useState(false);
+	const [fetchedDest, setFetchedDest] = useState(null);
+	const [fetchedPackage, setFetchedPackage] = useState(null);
 
 	/* ── Service checkbox selections ── */
 	const [selectedServices, setSelectedServices] = useState(() =>
 		Object.fromEntries([...ALL_INCLUSIVE_SERVICES, ...SINGLE_DESTINATION_SERVICES].map((s) => [s.id, true]))
 	);
 
-	/* ── Destination options ── */
+	/* ── Destination list memory tracking ── */
+	const [allDestinations, setAllDestinations] = useState([]);
+	const [allPackages, setAllPackages] = useState([]);
+
+	/* ── Destination options (Packages) ── */
 	const DESTINATIONS = [
 		'Sigiriya Rock Fortress',
 		'Temple of the Tooth Relic — Kandy',
@@ -153,15 +166,75 @@ export default function BookingPage() {
 
 	useEffect(() => {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
-	}, []);
+
+		const fetchData = async () => {
+			try {
+				const resAll = await fetch(`${API_BASE_URL}/api/destinations`);
+				if (!resAll.ok) throw new Error();
+				const dbDestinations = await resAll.json();
+				setAllDestinations(dbDestinations);
+
+				if (queryType === 'single' && queryDestinationId) {
+					const destinationFound = dbDestinations.find(d => d._id === queryDestinationId);
+					if (destinationFound) {
+						setFetchedDest(destinationFound);
+						setFormData(prev => ({ ...prev, destination: destinationFound._id }));
+
+						if (destinationFound.singleVisit?.addOns?.length) {
+							const addonServices = destinationFound.singleVisit.addOns.map((addId, idx) => [
+								`addon_${idx}`, true
+							]);
+							setSelectedServices(prev => ({ ...prev, ...Object.fromEntries(addonServices) }));
+						}
+					}
+				}
+			} catch (e) {
+				console.error("Failed to load DB destinations.", e);
+			}
+
+			try {
+				const pRes = await fetch(`${API_BASE_URL}/api/packages`);
+				if (pRes.ok) {
+					const pData = await pRes.json();
+					setAllPackages(pData);
+					
+					if (queryType === 'package' && queryPackageId) {
+						const pkgFound = pData.find(p => p._id === queryPackageId || p.packageId === queryPackageId);
+						if (pkgFound) {
+							setFetchedPackage(pkgFound);
+							setFormData(prev => ({ ...prev, destination: pkgFound._id }));
+						}
+					}
+				}
+			} catch (e) {
+				console.error("Failed to load DB packages.", e);
+			}
+		};
+
+		fetchData();
+	}, [queryType, queryDestinationId, queryPackageId]);
 
 	/* ── Derived price values ── */
 	const defaultPrice = 'LKR 45,000';
-	const displayPrice = locationState?.price || defaultPrice;
+	const displayPrice = bookingMode === 'single' && fetchedDest?.singleVisit?.pricePerPerson 
+      ? `Rs. ${fetchedDest.singleVisit.pricePerPerson}`
+      : (fetchedPackage?.price ? `Rs. ${fetchedPackage.price}` : locationState?.price || defaultPrice);
 	const basePrice = parseInt(displayPrice.replace(/[^0-9]/g, '')) || 45000;
 	const currencyPrefix = displayPrice.trim().toLowerCase().startsWith('rs') ? 'Rs. ' : 'LKR ';
 
-	const activeServices = bookingMode === 'package' ? ALL_INCLUSIVE_SERVICES : SINGLE_DESTINATION_SERVICES;
+    // Format single addons nicely
+    const singleDataAddons = fetchedDest?.singleVisit?.addOns?.map((add, idx) => ({
+      id: `addon_${idx}`,
+      label: add.name,
+      price: add.price,
+      icon: (
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-[#d66847] shrink-0" aria-hidden="true">
+				<path d="M15 5v2M15 11v2M15 17v2M5 5h14a2 2 0 0 1 2 2v3a2 2 0 0 1 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 1 0-4V7a2 2 0 0 1 2-2z" />
+			</svg>
+      )
+    })) || SINGLE_DESTINATION_SERVICES;
+
+	const activeServices = bookingMode === 'package' ? ALL_INCLUSIVE_SERVICES : singleDataAddons;
 	const serviceAddons = activeServices
 		.filter((s) => selectedServices[s.id])
 		.reduce((sum, s) => sum + s.price, 0);
@@ -193,6 +266,36 @@ export default function BookingPage() {
 		navigate('/booking-success');
 	};
 
+	const handleDestinationChange = (e) => {
+		const destId = e.target.value;
+		setFormData((prev) => ({ ...prev, destination: destId }));
+		if (formErrors.destination) setFormErrors((prev) => ({ ...prev, destination: undefined }));
+
+		if (bookingMode === 'single') {
+			const found = allDestinations.find(d => d._id === destId || d.title === destId);
+			if (found) {
+				setFetchedDest(found);
+				if (found.singleVisit?.addOns?.length) {
+					const addonServices = found.singleVisit.addOns.map((addId, idx) => [
+						`addon_${idx}`, true
+					]);
+					setSelectedServices(prev => ({ ...prev, ...Object.fromEntries(addonServices) }));
+				} else {
+					// Re-initialize default singles if missing
+					setSelectedServices(prev => ({
+						...prev,
+						...Object.fromEntries(SINGLE_DESTINATION_SERVICES.map(s => [s.id, true]))
+					}));
+				}
+			}
+		} else {
+			const foundPkg = allPackages.find(p => p._id === destId || p.title === destId);
+			if (foundPkg) {
+				setFetchedPackage(foundPkg);
+			}
+		}
+	};
+
 	const field = (name) => ({
 		value: formData[name],
 		onChange: (e) => {
@@ -201,6 +304,12 @@ export default function BookingPage() {
 		},
 	});
 
+	// Override field for destination map to handle DB data
+	const destField = {
+		value: formData.destination,
+		onChange: handleDestinationChange
+	};
+
 	const inputCls = (name) =>
 		`w-full border rounded-xl px-4 py-3 text-xs font-semibold placeholder-slate-300 focus:outline-none transition-all duration-200 bg-[#fffcfb] shadow-sm ${
 			formErrors[name]
@@ -208,21 +317,29 @@ export default function BookingPage() {
 				: 'border-slate-200 focus:border-[#d66847] text-slate-700'
 		}`;
 
+	const getImageSrc = (img) => {
+		if (!img || typeof img !== 'string') return '';
+		if (img.startsWith('http') || img.startsWith('data:')) return img;
+		return `${API_BASE_URL}${img.startsWith('/') ? img : `/${img}`}`;
+	};
+
 	/* ── Sidebar text based on mode ── */
 	const sidebarTitle =
 		bookingMode === 'package'
-			? locationState?.title || 'Cultural Heritage Expedition'
-			: 'Sigiriya Rock Fortress — Custom Admission';
+			? fetchedPackage?.title || locationState?.title || 'Cultural Heritage Expedition'
+			: fetchedDest?.title || 'Sigiriya Rock Fortress — Custom Admission';
 	const sidebarLocation =
 		bookingMode === 'package'
-			? locationState?.location || 'Central Province, Sri Lanka'
-			: 'Matale District · Central Province';
+			? fetchedPackage?.category || locationState?.location || 'Central Province, Sri Lanka'
+			: fetchedDest?.location || fetchedDest?.region || 'Matale District · Central Province';
 	const sidebarDuration =
-		bookingMode === 'package' ? '3 Nights / 4 Days' : '1 Day · Sunrise to Sunset';
+		bookingMode === 'package' 
+            ? fetchedPackage?.duration || '3 Nights / 4 Days' 
+            : fetchedDest?.singleVisit?.duration || '1 Day · Sunrise to Sunset';
 	const sidebarImage =
 		bookingMode === 'package'
-			? '/assets/images/cultural_heritage_expedition.jpg'
-			: '/assets/images/Sigiriya/sigiriya%201.jpg';
+			? (fetchedPackage?.image ? getImageSrc(fetchedPackage.image) : '/assets/images/cultural_heritage_expedition.jpg')
+			: (fetchedDest?.image ? getImageSrc(fetchedDest.image) : '/assets/images/Sigiriya/sigiriya%201.jpg');
 
 	// Mapping of package titles to their grouped dynamic route milestones
 	const getRouteMilestones = (title) => {
@@ -260,7 +377,6 @@ export default function BookingPage() {
 				{/* ════════════════════════════════════════════
 				    SEGMENTED TAB TOGGLE — full width at top
 				    ════════════════════════════════════════════ */}
-				{!locationState?.isPackage && (
 					<div className="mb-10 mt-4 flex justify-center">
 						<div className="relative inline-flex items-center bg-slate-100 rounded-xl p-1 shadow-inner gap-0">
 							{/* Sliding highlight pill */}
@@ -276,8 +392,11 @@ export default function BookingPage() {
 							<button
 								type="button"
 								onClick={() => handleModeSwitch('package')}
+								disabled={queryType === 'single'}
 								className={`relative z-10 px-7 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] rounded-[10px] transition-colors duration-300 ${
 									bookingMode === 'package' ? 'text-[#d66847]' : 'text-slate-500 hover:text-slate-700'
+								} ${
+									queryType === 'single' ? 'opacity-50 cursor-not-allowed hover:text-slate-500' : ''
 								}`}
 							>
 								All-inclusive Package
@@ -287,15 +406,17 @@ export default function BookingPage() {
 							<button
 								type="button"
 								onClick={() => handleModeSwitch('single')}
+								disabled={queryType === 'package'}
 								className={`relative z-10 px-7 py-2.5 text-[11px] font-bold uppercase tracking-[0.12em] rounded-[10px] transition-colors duration-300 ${
 									bookingMode === 'single' ? 'text-[#d66847]' : 'text-slate-500 hover:text-slate-700'
+								} ${
+									queryType === 'package' ? 'opacity-50 cursor-not-allowed hover:text-slate-500' : ''
 								}`}
 							>
 								Single Destination Only
 							</button>
 						</div>
 					</div>
-				)}
 
 				{/* ════════════════════════════════════════════
 				    TWO-COLUMN LAYOUT — fades on mode switch
@@ -507,13 +628,21 @@ export default function BookingPage() {
 										<div className="relative">
 											<select
 												id="bk-destination"
-												{...field('destination')}
+												{...destField}
 												className={`${inputCls('destination')} appearance-none pr-10 bg-[#fffcfb]`}
 											>
 												<option value="">Select a destination…</option>
-												{DESTINATIONS.map((d) => (
-													<option key={d} value={d}>{d}</option>
-												))}
+												{bookingMode === 'single'
+													? allDestinations.map((d) => (
+															<option key={d._id} value={d._id}>
+																{d.title}
+															</option>
+														))
+													: allPackages.map((p) => (
+															<option key={p._id} value={p._id}>
+																{p.title}
+															</option>
+														))}
 											</select>
 											{/* Chevron icon */}
 											<svg

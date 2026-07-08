@@ -2,29 +2,64 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../Components/Navbar';
 import Footer from '../Components/Footer';
-import { destinationRegistry } from '../data';
+import API_BASE_URL from '../api/api';
 
 export default function DestinationDetailPage() {
 	const navigate = useNavigate();
-	const { id } = useParams();
+	const params = useParams();
+	const destinationParam = params.destinationParam || params.id || params.slug;
 	const [activeTab, setActiveTab] = useState('Overview');
 	const [isExpanded, setIsExpanded] = useState(false);
 
-	const activePlace = destinationRegistry.find(place => place.id.toLowerCase() === id?.toLowerCase());
-	const currentDestination = activePlace || destinationRegistry[0];
+	const [currentDestination, setCurrentDestination] = useState(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+
+	const getImageSrc = (img) => {
+		if (!img || typeof img !== 'string') return '';
+		if (img.startsWith('http') || img.startsWith('data:')) return img;
+		return `${API_BASE_URL}${img.startsWith('/') ? img : `/${img}`}`;
+	};
 
 	useEffect(() => {
+		const fetchDestination = async () => {
+			try {
+				setLoading(true);
+				const res = await fetch(`${API_BASE_URL}/api/destinations/${destinationParam}`);
+				if (!res.ok) throw new Error('Destination not found');
+				const data = await res.json();
+				const singleVisitData = data.singleVisit || {};
+
+				setCurrentDestination({
+					...data,
+					singleVisit: singleVisitData,
+					title: data.title || data.name || "Untitled Destination",
+					category: data.category || "Destination",
+					region: data.region || "Sri Lanka",
+					location: data.location || data.region || "Sri Lanka",
+					description: data.description || "No description available.",
+					pricePerPerson: singleVisitData.pricePerPerson || data.pricePerPerson || 0,
+					duration: singleVisitData.duration || data.duration || "1 Day",
+					bestTime: singleVisitData.bestTime || data.bestTime || "Year-round",
+					guidedExpedition: singleVisitData.guidedExpedition ?? data.guidedExpedition ?? true,
+					image: data.image || data.imageUrl || data.coverImage,
+					addOns: Array.isArray(singleVisitData.addOns) ? singleVisitData.addOns : [],
+					highlights: Array.isArray(data.highlights) && data.highlights.length > 0 ? data.highlights : ['Scenic Views', 'Cultural Heritage', 'Relaxing Environment']
+				});
+
+			} catch (err) {
+				setError(err.message);
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchDestination();
 		window.scrollTo({ top: 0, behavior: 'smooth' });
-	}, [id]);
+	}, [destinationParam]);
 
 	const handleBookingClick = () => {
-		navigate('/booking', {
-			state: {
-				title: currentDestination.title.toUpperCase(),
-				price: 'Rs. 25,000',
-				location: currentDestination.region
-			}
-		});
+		if (!currentDestination) return;
+		navigate(`/booking?type=single&destinationId=${currentDestination._id}`);
 	};
 
 	const tabs = ['Overview', "What's included", 'FAQs'];
@@ -43,7 +78,7 @@ export default function DestinationDetailPage() {
 	const faqs = [
 		{
 			question: "What is the best time of year to visit?",
-			answer: `The best time to visit ${currentDestination.title} is during the dry season, which is generally from ${currentDestination.bestTime}. This offers optimal weather conditions for sightseeing and outdoor activities.`
+			answer: `The best time to visit ${currentDestination?.title || 'this location'} is during the dry season, which is generally from ${currentDestination?.bestTime || 'year-round'}. This offers optimal weather conditions for sightseeing and outdoor activities.`
 		},
 		{
 			question: "Is a professional tour guide recommended?",
@@ -59,13 +94,35 @@ export default function DestinationDetailPage() {
 		}
 	];
 
+	if (loading) {
+		return (
+			<div className="min-h-screen bg-white flex flex-col pt-24 items-center">
+				<Navbar />
+				<div className="mt-20 font-semibold text-slate-500">Loading destination...</div>
+			</div>
+		);
+	}
+
+	if (error || !currentDestination) {
+		return (
+			<div className="min-h-screen bg-white flex flex-col pt-24 items-center">
+				<Navbar />
+				<div className="mt-20 font-bold text-red-500">{error || 'Destination not found'}</div>
+			</div>
+		);
+	}
+
+	const placeLocation = currentDestination.location || currentDestination.region || "Sri Lanka";
+	const mapSrc = currentDestination.mapUrl || `https://maps.google.com/maps?q=${encodeURIComponent(placeLocation)}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
+	const mapLink = currentDestination.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeLocation)}`;
+
 	return (
 		<div className="min-h-screen bg-white relative w-full block">
 			<Navbar />
 
 			<section
 				className="relative w-full h-64 md:h-[600px] lg:h-[700px] bg-cover bg-center bg-no-repeat transition-all duration-1000"
-				style={{ backgroundImage: `url('${currentDestination.dayBgUrl}')` }}
+				style={{ backgroundImage: `url('${getImageSrc(currentDestination.image)}')` }}
 			>
 				<div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/25" />
 
@@ -88,7 +145,7 @@ export default function DestinationDetailPage() {
 						</div>
 
 						<p className="mt-2 text-xs leading-relaxed text-slate-500">
-							{currentDestination.tagline}
+							{currentDestination.tagline || `Discover the beauty of ${currentDestination.title || currentDestination.name}`}
 						</p>
 
 						<div className="my-4 border-t border-slate-100" />
@@ -96,7 +153,12 @@ export default function DestinationDetailPage() {
 						<div className="space-y-2.5">
 							<div className="flex items-center gap-2.5 text-xs font-semibold text-slate-700">
 								<span className="text-base text-[#d66847]" aria-hidden="true">📍</span>
-								<span>{currentDestination.region}, Sri Lanka</span>
+								<span>{placeLocation}</span>
+							</div>
+							
+							<div className="flex items-center gap-2.5 text-xs font-semibold text-slate-700">
+								<span className="text-base text-blue-500" aria-hidden="true">⏱️</span>
+								<span>Duration: {currentDestination.duration}</span>
 							</div>
 
 							<div className="flex items-center gap-2.5 text-xs font-semibold text-slate-700">
@@ -104,10 +166,12 @@ export default function DestinationDetailPage() {
 								<span>Best Time: {currentDestination.bestTime}</span>
 							</div>
 
-							<div className="flex items-center gap-2.5 text-xs font-semibold text-slate-700">
-								<span className="text-base text-[#d66847]" aria-hidden="true">🛡️</span>
-								<span>Guided Expedition Available</span>
-							</div>
+							{currentDestination.guidedExpedition && (
+								<div className="flex items-center gap-2.5 text-xs font-semibold text-slate-700">
+									<span className="text-base text-[#d66847]" aria-hidden="true">🛡️</span>
+									<span>Guided Expedition Available</span>
+								</div>
+							)}
 						</div>
 
 						<div className="my-4 border-t border-slate-100" />
@@ -118,7 +182,7 @@ export default function DestinationDetailPage() {
 									Price
 								</p>
 								<p className="text-xl font-black text-slate-900">
-									Rs. 25,000 <span className="text-[11px] font-normal text-slate-400">/Person</span>
+									Rs. {Number(currentDestination.pricePerPerson).toLocaleString()} <span className="text-[11px] font-normal text-slate-400">/Person</span>
 								</p>
 							</div>
 							<button
@@ -176,7 +240,7 @@ export default function DestinationDetailPage() {
 											<div className="mt-4 pt-4 border-t border-slate-100">
 												<h4 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-3">Key Highlights:</h4>
 												<ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-600">
-													{currentDestination.highlights.map((highlight, index) => (
+													{(currentDestination.highlights || ['Scenic Views', 'Cultural Heritage', 'Relaxing Environment']).map((highlight, index) => (
 														<li key={index} className="flex items-center gap-2">
 															<span className="text-[#d66847] text-lg leading-none">•</span>
 															{highlight}
@@ -205,13 +269,13 @@ export default function DestinationDetailPage() {
 									<div className="relative group rounded-3xl overflow-hidden border border-slate-200 shadow-lg bg-slate-50">
 										<iframe
 											title="Google Maps Location"
-											src={`https://maps.google.com/maps?q=${encodeURIComponent(currentDestination.title + ' Sri Lanka')}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+											src={mapSrc}
 											className="w-full h-[300px] border-0 relative z-10 pointer-events-none"
 											loading="lazy"
 										></iframe>
 
 										<a
-											href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(currentDestination.title + ' Sri Lanka')}`}
+											href={mapLink}
 											target="_blank"
 											rel="noopener noreferrer"
 											className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-all duration-300 p-4 text-center cursor-pointer"

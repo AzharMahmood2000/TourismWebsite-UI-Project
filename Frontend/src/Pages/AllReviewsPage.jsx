@@ -1,82 +1,4 @@
-import { useState, useMemo } from 'react';
-
-/* ═══════════════════════════════════════════════════════
-   Mock Data — Curated Product Reviews
-   ═══════════════════════════════════════════════════════ */
-const mockReviews = [
-	{
-		id: 1,
-		reviewerName: 'Sarah Jenkins',
-		rating: 5,
-		date: '2026-06-28',
-		reviewTitle: 'Exceeded my expectations!',
-		reviewComment: 'The build quality is exceptional, and it feels incredibly premium. Shipping was super fast too. Highly recommended!',
-		isVerifiedBuyer: true,
-	},
-	{
-		id: 2,
-		reviewerName: 'Michael Chen',
-		rating: 4,
-		date: '2026-06-25',
-		reviewTitle: 'Solid performance, minor nitpick',
-		reviewComment: 'Really pleased with this purchase. The battery life is stellar. My only issue is that the charging cable is a bit short.',
-		isVerifiedBuyer: true,
-	},
-	{
-		id: 3,
-		reviewerName: 'Elena Rostova',
-		rating: 5,
-		date: '2026-06-22',
-		reviewTitle: 'Absolutely beautiful design',
-		reviewComment: 'Minimalist, sleek, and works exactly as described. It fits perfectly on my desk. Definitely worth the price.',
-		isVerifiedBuyer: false,
-	},
-	{
-		id: 4,
-		reviewerName: 'David K.',
-		rating: 3,
-		date: '2026-06-18',
-		reviewTitle: 'Good but has room for improvement',
-		reviewComment: 'It does the job, but the setup process was slightly frustrating. Once configured, it operates smoothly.',
-		isVerifiedBuyer: true,
-	},
-	{
-		id: 5,
-		reviewerName: 'Aisha Rahman',
-		rating: 5,
-		date: '2026-06-14',
-		reviewTitle: 'Best customer service ever',
-		reviewComment: 'I had an issue with sizing, and they exchanged it immediately without any hassle. The quality of materials is top-tier.',
-		isVerifiedBuyer: true,
-	},
-	{
-		id: 6,
-		reviewerName: 'Marcus Miller',
-		rating: 2,
-		date: '2026-06-10',
-		reviewTitle: 'Disappointed with the durability',
-		reviewComment: 'Showed signs of wear and tear after just a week of normal usage. Hoping customer support can help with a replacement.',
-		isVerifiedBuyer: false,
-	},
-	{
-		id: 7,
-		reviewerName: 'Chuyi Wang',
-		rating: 4,
-		date: '2026-06-05',
-		reviewTitle: 'Very solid and reliable',
-		reviewComment: 'I have been using this daily for a month now. Extremely stable and performant. Highly recommended for professionals.',
-		isVerifiedBuyer: true,
-	},
-	{
-		id: 8,
-		reviewerName: 'Olivia Smith',
-		rating: 5,
-		date: '2026-06-01',
-		reviewTitle: 'Perfect in every way',
-		reviewComment: 'Everything from the unboxing experience to the daily operation is flawless. Will buy more as gifts!',
-		isVerifiedBuyer: true,
-	},
-];
+import { useState, useMemo, useEffect } from 'react';
 
 /* ═══════════════════════════════════════════════════════
    Star Icons Renderer Helper
@@ -103,6 +25,28 @@ function StarRating({ rating, starSize = "w-4 h-4" }) {
    Main Component: AllReviewsPage
    ═══════════════════════════════════════════════════════ */
 export default function AllReviewsPage() {
+	const [rawReviews, setRawReviews] = useState([]);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState(null);
+
+	useEffect(() => {
+		const fetchReviews = async () => {
+			try {
+				setLoading(true);
+				const res = await fetch("http://localhost:5000/api/reviews");
+				if (!res.ok) throw new Error("Failed to load reviews");
+				const data = await res.json();
+				setRawReviews(data);
+			} catch (err) {
+				setError(err.message);
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchReviews();
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	}, []);
+
 	// Sort state: 'newest' | 'highest' | 'lowest'
 	const [sortBy, setSortBy] = useState('newest');
 	// Filter state: verified purchases only
@@ -110,20 +54,21 @@ export default function AllReviewsPage() {
 	// Loaded reviews count state (pagination)
 	const [visibleCount, setVisibleCount] = useState(3);
 
-	/* ─── 1. Calculating dynamic rating summaries based on mock reviews ─── */
+	/* ─── 1. Calculating dynamic rating summaries based on fetched reviews ─── */
 	const { averageRating, totalCount, starsDistribution } = useMemo(() => {
-		const total = mockReviews.length;
+		const total = rawReviews.length;
 		if (total === 0) {
 			return { averageRating: 0, totalCount: 0, starsDistribution: {} };
 		}
-		const sum = mockReviews.reduce((acc, curr) => acc + curr.rating, 0);
+		const sum = rawReviews.reduce((acc, curr) => acc + (curr.rating || 0), 0);
 		const avg = (sum / total).toFixed(1);
 
 		// Initialize counters
 		const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-		mockReviews.forEach((r) => {
-			if (counts[r.rating] !== undefined) {
-				counts[r.rating] += 1;
+		rawReviews.forEach((r) => {
+			const rt = r.rating || 0;
+			if (counts[rt] !== undefined) {
+				counts[rt] += 1;
 			}
 		});
 
@@ -141,11 +86,11 @@ export default function AllReviewsPage() {
 			totalCount: total,
 			starsDistribution: distribution,
 		};
-	}, []);
+	}, [rawReviews]);
 
 	/* ─── 2. Filtering & Sorting Local Data States ─── */
 	const filteredAndSortedReviews = useMemo(() => {
-		let list = [...mockReviews];
+		let list = [...rawReviews];
 
 		// Filter
 		if (verifiedOnly) {
@@ -155,17 +100,17 @@ export default function AllReviewsPage() {
 		// Sort
 		list.sort((a, b) => {
 			if (sortBy === 'highest') {
-				return b.rating - a.rating;
+				return (b.rating || 0) - (a.rating || 0);
 			}
 			if (sortBy === 'lowest') {
-				return a.rating - b.rating;
+				return (a.rating || 0) - (b.rating || 0);
 			}
 			// Default: newest date first
-			return new Date(b.date) - new Date(a.date);
+			return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
 		});
 
 		return list;
-	}, [sortBy, verifiedOnly]);
+	}, [rawReviews, sortBy, verifiedOnly]);
 
 	const totalFiltered = filteredAndSortedReviews.length;
 	const paginatedReviews = filteredAndSortedReviews.slice(0, visibleCount);
@@ -280,20 +225,30 @@ export default function AllReviewsPage() {
 				    REVIEWS LIST (MAIN GRID VIEW)
 				    ════════════════════════════════════════════ */}
 				<section className="space-y-6">
-					{paginatedReviews.length === 0 ? (
+					{loading ? (
 						<div className="text-center py-16 bg-white border border-slate-100 rounded-2xl shadow-sm">
-							<p className="text-sm font-medium text-slate-400">No reviews found matching the filters.</p>
+							<p className="text-sm font-bold text-slate-500">Loading reviews...</p>
+						</div>
+					) : error ? (
+						<div className="text-center py-16 bg-white border border-slate-100 rounded-2xl shadow-sm">
+							<p className="text-sm font-bold text-red-500">{error}</p>
+						</div>
+					) : paginatedReviews.length === 0 ? (
+						<div className="text-center py-16 bg-white border border-slate-100 rounded-2xl shadow-sm">
+							<p className="text-sm font-medium text-slate-400">No approved reviews yet.</p>
 						</div>
 					) : (
 						paginatedReviews.map((review) => (
 							<article
-								key={review.id}
+								key={review._id}
 								className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col transition-all duration-300 hover:shadow-md"
 							>
 								{/* Top row metadata info */}
 								<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
 									<div className="flex items-center gap-3">
-										<span className="text-sm font-bold text-slate-900">{review.reviewerName}</span>
+										<span className="text-sm font-bold text-slate-900">
+											{review.reviewerName || review.user?.name || "Anonymous Traveler"}
+										</span>
 										{review.isVerifiedBuyer && (
 											<span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider">
 												<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3 h-3">
@@ -303,19 +258,21 @@ export default function AllReviewsPage() {
 											</span>
 										)}
 									</div>
-									<span className="text-xs text-slate-400 font-semibold">{review.date}</span>
+									<span className="text-xs text-slate-400 font-semibold">
+										{review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ""}
+									</span>
 								</div>
 
 								{/* Star rating alignment */}
 								<div className="mt-3">
-									<StarRating rating={review.rating} />
+									<StarRating rating={review.rating || 0} />
 								</div>
 
 								{/* Review Content */}
 								<div className="mt-4">
-									<h3 className="text-sm font-bold text-slate-900">{review.reviewTitle}</h3>
+									<h3 className="text-sm font-bold text-slate-900">{review.reviewTitle || "Travel Review"}</h3>
 									<p className="text-sm text-slate-500 leading-relaxed mt-2 font-normal">
-										{review.reviewComment}
+										{review.reviewComment || ""}
 									</p>
 								</div>
 							</article>

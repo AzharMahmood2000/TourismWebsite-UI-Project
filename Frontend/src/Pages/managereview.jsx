@@ -1,39 +1,7 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import AdminSidebar from '../Components/AdminSidebar';
-
-const reviewsData = [
-  {
-    initials: "ED",
-    name: "Elena Dubois",
-    location: "Paris,\nFrance",
-    rating: 5,
-    title: "Unforgettable Sunset at Sigiriya",
-    content: `"The attention to detail was immaculate. From the cold towels`,
-    journey: "Sigiriya\nCultural Trip",
-    date: "Oct 24,\n2023"
-  },
-  {
-    initials: "MK",
-    name: "Marcus Kael",
-    location: "Berlin,\nGermany",
-    rating: 4,
-    title: "The Train Journey was Magic",
-    content: `"The tea estates of Ella are even more beautiful than the photos....`,
-    journey: "Ella Highland\nTrail",
-    date: "Oct 21,\n2023"
-  },
-  {
-    initials: "SA",
-    name: "Sarah Ahmed",
-    location: "Dubai, UAE",
-    rating: 5,
-    title: "Peaceful Beach Escape",
-    content: `"Mirissa was the perfect end to our honeymoon. The beach villa...`,
-    journey: "Mirissa\nSerenity Stay",
-    date: "Oct 18,\n2023"
-  }
-];
+import AdminTopbar from '../Components/AdminTopbar';
 
 const renderStars = (rating) => {
   return (
@@ -48,6 +16,86 @@ const renderStars = (rating) => {
 };
 
 const ManageReview = () => {
+  const navigate = useNavigate();
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const fetchReviews = async () => {
+    try {
+      setLoading(true);
+      const userInfoString = localStorage.getItem("userInfo");
+      const token = userInfoString ? JSON.parse(userInfoString).token : "";
+
+      const response = await fetch("http://localhost:5000/api/reviews/admin/all", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load reviews.");
+      }
+      const data = await response.json();
+      setReviews(data);
+    } catch (err) {
+      setError(err.message || "Failed to load reviews.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReviews();
+  }, []);
+
+  const handleUpdateStatus = async (id, status) => {
+    try {
+      const userInfoString = localStorage.getItem("userInfo");
+      const token = userInfoString ? JSON.parse(userInfoString).token : "";
+
+      const res = await fetch(`http://localhost:5000/api/reviews/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+      fetchReviews();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this review?")) return;
+    try {
+      const userInfoString = localStorage.getItem("userInfo");
+      const token = userInfoString ? JSON.parse(userInfoString).token : "";
+
+      const res = await fetch(`http://localhost:5000/api/reviews/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!res.ok) throw new Error("Failed to delete review");
+      fetchReviews();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  // Stats calculation
+  const totalReviews = reviews.length;
+  const pendingReviews = reviews.filter(r => r.status === "Pending").length;
+  const approvedReviews = reviews.filter(r => r.status === "Approved").length;
+  const hiddenReviews = reviews.filter(r => r.status === "Hidden").length;
+  const averageRating = totalReviews > 0 
+    ? (reviews.reduce((acc, curr) => acc + curr.rating, 0) / totalReviews).toFixed(1) 
+    : 0;
+
   return (
     <div className="flex h-screen bg-[#F4F8F7] font-sans text-gray-800">
       <AdminSidebar activePage="reviews" />
@@ -55,33 +103,7 @@ const ManageReview = () => {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-white">
         {/* Top Header */}
-        <header className="flex items-center justify-between px-10 py-5 border-b border-gray-200 sticky top-0 z-10 bg-white">
-          <div className="relative w-96">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </span>
-            <input type="text" placeholder="Global search..." className="w-full py-2.5 pl-10 pr-4 bg-[#F9FAFB] border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#A7412A] outline-none transition-all" />
-          </div>
-
-          <div className="flex items-center space-x-6">
-            <button className="text-gray-500 hover:text-gray-700 relative">
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </button>
-            
-            <button className="text-gray-500 hover:text-gray-700">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
-
-            <img src="https://i.pravatar.cc/150?u=a042581f4e29026024d" alt="Admin avatar" className="w-10 h-10 rounded-full object-cover border-2 border-gray-200" />
-          </div>
-        </header>
+        <AdminTopbar showSearch={true} searchPlaceholder="Global search..." />
 
         {/* Path/Title */}
         <div className="px-10 py-8 bg-[#FAFAFA] min-h-[calc(100vh-80px)]">
@@ -108,36 +130,29 @@ const ManageReview = () => {
            
            {/* Filters Bar */}
            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-             {/* Filter 1 */}
              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-2">Filter By Rating</p>
-                <div className="flex items-center text-sm font-medium text-gray-700">
-                  {renderStars(4)}
-                  <span className="ml-2">& Up</span>
+                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-2">Total Reviews</p>
+                <div className="flex items-center text-lg font-bold text-gray-900">
+                  {totalReviews}
                 </div>
              </div>
-             {/* Filter 2 */}
-             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center relative">
-                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-2">Destination Journey</p>
-                <div className="flex items-center justify-between text-sm font-medium text-gray-900 cursor-pointer">
-                  <span>All Locations</span>
-                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                  </svg>
+             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center border-l-4 border-l-yellow-500">
+                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-2">Pending</p>
+                <div className="flex items-center text-lg font-bold text-yellow-600">
+                  {pendingReviews}
                 </div>
              </div>
-             {/* Filter 3 */}
              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-2">Review Status</p>
-                <div className="flex items-center space-x-2 text-[10px] font-bold tracking-wider">
-                   <span className="bg-[#A7412A] text-white px-2 py-0.5 rounded shadow-sm">PUBLISHED</span>
-                   <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded shadow-sm">PENDING</span>
+                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-2">Approved / Hidden</p>
+                <div className="flex items-center text-sm font-bold text-gray-700">
+                   <span className="text-emerald-600">{approvedReviews}</span>
+                   <span className="mx-2">/</span>
+                   <span className="text-gray-400">{hiddenReviews}</span>
                 </div>
              </div>
-             {/* Filter 4 */}
              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-2">Quick Stats</p>
-                <p className="text-sm font-medium text-gray-700"><strong className="text-[#A7412A] font-bold text-lg mr-1">4.8</strong> Global Average</p>
+                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-2">Global Average</p>
+                <p className="text-sm font-medium text-gray-700"><strong className="text-[#A7412A] font-bold text-lg mr-1">{averageRating}</strong></p>
              </div>
            </div>
 
@@ -155,39 +170,55 @@ const ManageReview = () => {
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-gray-200">
-                      {reviewsData.map((rev, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                           <td className="px-6 py-5">
-                             <div className="flex">
-                               <div className="w-10 h-10 bg-[#FAD8C3] text-[#A7412A] rounded-full flex items-center justify-center font-bold mr-3 shrink-0">{rev.initials}</div>
-                               <div>
-                                 <h3 className="font-bold text-sm text-gray-900">{rev.name}</h3>
-                                 <p className="text-xs text-gray-500 whitespace-pre-line leading-tight mt-0.5">{rev.location}</p>
-                               </div>
-                             </div>
-                           </td>
-                           <td className="px-6 py-5">
-                             <div className="mb-2">{renderStars(rev.rating)}</div>
-                             <h4 className="font-bold text-gray-900 text-sm">{rev.title}</h4>
-                             <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{rev.content}</p>
-                           </td>
-                           <td className="px-6 py-5">
-                             <div className="bg-[#EAEFEF] text-gray-600 px-3 py-2 rounded flex items-center w-fit text-xs font-medium border border-gray-200/50">
-                               <svg className="w-3.5 h-3.5 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                               </svg>
-                               <span className="whitespace-pre-line leading-snug">{rev.journey}</span>
-                             </div>
-                           </td>
-                           <td className="px-6 py-5">
-                             <div className="text-gray-600 text-sm whitespace-pre-line leading-snug">{rev.date}</div>
-                           </td>
-                           <td className="px-6 py-5 text-center">
-                              {/* Left empty as per the design */}
-                           </td>
-                        </tr>
-                      ))}
+                      {loading ? (
+                        <tr><td colSpan="5" className="text-center py-10 text-gray-500 font-medium">Loading reviews...</td></tr>
+                      ) : error ? (
+                        <tr><td colSpan="5" className="text-center py-10 text-red-500 font-medium">{error}</td></tr>
+                      ) : reviews.length === 0 ? (
+                        <tr><td colSpan="5" className="text-center py-10 text-gray-500 font-medium">No reviews found.</td></tr>
+                      ) : (
+                        reviews.map((rev) => (
+                          <tr key={rev._id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-5">
+                              <div className="flex">
+                                <div className="w-10 h-10 bg-[#FAD8C3] text-[#A7412A] rounded-full flex items-center justify-center font-bold mr-3 shrink-0">
+                                  {rev.reviewerName ? rev.reviewerName.substring(0, 2).toUpperCase() : "NA"}
+                                </div>
+                                <div>
+                                  <h3 className="font-bold text-sm text-gray-900">{rev.reviewerName}</h3>
+                                  <p className={`text-[10px] font-bold uppercase mt-1 px-1.5 py-0.5 rounded-sm inline-block ${rev.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : rev.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-200 text-gray-700'}`}>
+                                    {rev.status}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <div className="mb-2">{renderStars(rev.rating)}</div>
+                              <h4 className="font-bold text-gray-900 text-sm">{rev.reviewTitle}</h4>
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{rev.reviewComment}</p>
+                            </td>
+                            <td className="px-6 py-5">
+                              <div className="bg-[#EAEFEF] text-gray-600 px-3 py-2 rounded flex items-center w-fit text-xs font-medium border border-gray-200/50">
+                                <span className="whitespace-pre-line leading-snug">{rev.journey || "N/A"}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <div className="text-gray-600 text-sm whitespace-pre-line leading-snug">
+                                {new Date(rev.createdAt).toLocaleDateString()}
+                              </div>
+                            </td>
+                            <td className="px-6 py-5 flex flex-col gap-1.5 items-end">
+                               {rev.status !== "Approved" && (
+                                 <button onClick={() => handleUpdateStatus(rev._id, "Approved")} className="w-20 text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1.5 rounded font-bold hover:bg-emerald-200 transition">Approve</button>
+                               )}
+                               {rev.status !== "Hidden" && (
+                                 <button onClick={() => handleUpdateStatus(rev._id, "Hidden")} className="w-20 text-[10px] bg-gray-100 text-gray-700 px-2 py-1.5 rounded font-bold hover:bg-gray-200 transition">Hide</button>
+                               )}
+                               <button onClick={() => handleDelete(rev._id)} className="w-20 text-[10px] bg-red-100 text-red-700 px-2 py-1.5 rounded font-bold hover:bg-red-200 transition">Delete</button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                    </tbody>
                 </table>
               </div>

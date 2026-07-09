@@ -1,48 +1,37 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const defaultReviews = [
-	{
-		quote:
-			'The Ella trip was magical. Travelarch handled everything from the luxury train tickets to the boutique villa booking. Highly recommend!',
-		name: 'Amara Perera',
-		role: 'Verified Explorer',
-	},
-	{
-		quote:
-			'Yala safari was breathtaking. We saw three leopards! The guide provided by Travelarch was extremely knowledgeable.',
-		name: 'James Wilson',
-		role: 'Wildlife Photographer',
-	},
-	{
-		quote:
-			'The attention to detail in our cultural tour of Sigiriya and Kandy was impressive. Every accommodation was a gem.',
-		name: 'Sophie Chen',
-		role: 'Cultural Enthusiast',
-	},
-];
-
-function Stars() {
-	return <div className="text-[#d66847]">★★★★★</div>;
+function Stars({ rating }) {
+	return (
+		<div className="flex text-[#d66847]">
+			{[1, 2, 3, 4, 5].map((star) => (
+				<span key={star} className={star <= rating ? "text-[#d66847]" : "text-slate-200"}>★</span>
+			))}
+		</div>
+	);
 }
 
 export default function Testimonials() {
 	const navigate = useNavigate();
-	const [reviewsList, setReviewsList] = useState(defaultReviews);
+	const [reviewsList, setReviewsList] = useState([]);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState("");
 
 	useEffect(() => {
-		const stored = localStorage.getItem('gamanaya_reviews');
-		if (stored) {
+		const fetchReviews = async () => {
 			try {
-				const parsed = JSON.parse(stored);
-				if (Array.isArray(parsed)) {
-					// Append custom user reviews to the top of the display grid list
-					setReviewsList([...parsed, ...defaultReviews]);
-				}
-			} catch (e) {
-				console.error("Failed to parse reviews from localStorage:", e);
+				setLoading(true);
+				const res = await fetch("http://localhost:5000/api/reviews");
+				if (!res.ok) throw new Error("Failed");
+				const data = await res.json();
+				setReviewsList(data);
+			} catch (err) {
+				setError("Failed to load reviews.");
+			} finally {
+				setLoading(false);
 			}
-		}
+		};
+		fetchReviews();
 	}, []);
 
 	return (
@@ -55,7 +44,7 @@ export default function Testimonials() {
 					</div>
 					<div className="flex gap-3">
 						<button
-							onClick={() => navigate('/destinations')}
+							onClick={() => navigate('/all-reviews')}
 							className="rounded-full border border-[#d66847]/25 bg-white px-5 py-2 text-sm font-semibold text-[#a65a3c] transition hover:border-[#d66847] hover:text-[#d66847]"
 						>
 							Explore All
@@ -69,22 +58,48 @@ export default function Testimonials() {
 					</div>
 				</div>
 
-				<div className="mt-10 grid gap-6 lg:grid-cols-3">
-					{reviewsList.map((review, idx) => (
-						<article key={`${review.name}-${idx}`} className="rounded-2xl border border-white bg-white p-6 shadow-sm">
-							<Stars />
-							<p className="mt-4 text-sm leading-7 text-slate-600">“{review.quote}”</p>
-							<div className="mt-6 flex items-center gap-3">
-								<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#d66847]/10 text-sm font-bold text-[#d66847]">
-									{review.name.slice(0, 1).toUpperCase()}
-								</div>
-								<div>
-									<p className="font-semibold text-slate-900">{review.name}</p>
-									<p className="text-xs text-slate-500">{review.role}</p>
-								</div>
-							</div>
-						</article>
-					))}
+				<div className="mt-10">
+					{loading ? (
+						<p className="text-center text-slate-500 py-10 font-medium">Loading reviews...</p>
+					) : error ? (
+						<p className="text-center text-red-500 py-10 font-medium">{error}</p>
+					) : reviewsList.length === 0 ? (
+						<p className="text-center text-slate-500 py-10 font-medium">No approved reviews yet.</p>
+					) : (
+						<div className="flex gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+							{reviewsList.map((review) => {
+								const reviewerName = review.reviewerName || review.user?.name || "Anonymous Traveler";
+								const rating = review.rating || 0;
+								const reviewTitle = review.reviewTitle || "Travel Review";
+								const reviewComment = review.reviewComment || review.comment || "";
+								const journey = review.journey || "Explorer";
+
+								return (
+									<article key={review._id} className="min-w-[320px] sm:min-w-[360px] md:min-w-[400px] snap-start shrink-0 rounded-2xl border border-white bg-white p-6 shadow-sm flex flex-col justify-between">
+										<div>
+											<div className="flex justify-between items-center">
+												<Stars rating={rating} />
+												{review.createdAt && (
+													<span className="text-xs text-slate-400 font-semibold">{new Date(review.createdAt).toLocaleDateString()}</span>
+												)}
+											</div>
+											<h3 className="mt-4 font-bold text-slate-800 text-sm">{reviewTitle}</h3>
+											<p className="mt-2 text-sm leading-7 text-slate-600 line-clamp-4">“{reviewComment}”</p>
+										</div>
+										<div className="mt-6 flex items-center gap-3 border-t border-slate-100 pt-4">
+											<div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#d66847]/10 text-sm font-bold text-[#d66847]">
+												{reviewerName.slice(0, 1).toUpperCase()}
+											</div>
+											<div>
+												<p className="font-semibold text-slate-900 line-clamp-1">{reviewerName}</p>
+												<p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-1 line-clamp-1">{journey}</p>
+											</div>
+										</div>
+									</article>
+								);
+							})}
+						</div>
+					)}
 				</div>
 			</div>
 		</section>

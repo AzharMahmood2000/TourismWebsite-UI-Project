@@ -10,18 +10,35 @@ export default function ContactPage() {
 		message: ''
 	});
 	const [isSubmitted, setIsSubmitted] = useState(false);
+	const [submitError, setSubmitError] = useState("");
 
 	useEffect(() => {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}, []);
 
-	const handleSubmit = (e) => {
+	const handleSubmit = async (e) => {
 		e.preventDefault();
-		setIsSubmitted(true);
-		setTimeout(() => {
-			setIsSubmitted(false);
-			setFormData({ name: '', email: '', category: '', message: '' });
-		}, 3500);
+		setSubmitError("");
+		try {
+			const res = await fetch("http://localhost:5000/api/contact", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					name: formData.name,
+					email: formData.email,
+					subject: formData.category,
+					message: formData.message,
+				}),
+			});
+			if (!res.ok) throw new Error("Failed");
+			setIsSubmitted(true);
+			setTimeout(() => {
+				setIsSubmitted(false);
+				setFormData({ name: '', email: '', category: '', message: '' });
+			}, 3500);
+		} catch (err) {
+			setSubmitError("Failed to send message. Please try again.");
+		}
 	};
 
 	return (
@@ -146,13 +163,18 @@ export default function ContactPage() {
 							{isSubmitted ? (
 								<div className="my-12 bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs font-semibold py-8 px-6 rounded-2xl text-center shadow-sm">
 									<span className="text-2xl block mb-2">📬</span>
-									<h3 className="font-extrabold text-sm mb-1">Inquiry Sent Successfully!</h3>
+									<h3 className="font-extrabold text-sm mb-1">Message sent successfully. We will contact you soon.</h3>
 									<p className="text-xs text-emerald-600 font-medium">
 										Thank you for contacting us. A dedicated curator will call or email you soon.
 									</p>
 								</div>
 							) : (
 								<form onSubmit={handleSubmit} className="mt-8 space-y-6">
+									{submitError && (
+										<div className="text-[10px] font-bold text-red-500 bg-red-50 p-2 rounded">
+											{submitError}
+										</div>
+									)}
 									<div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 										{/* Full Name input */}
 										<div>

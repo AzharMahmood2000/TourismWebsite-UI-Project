@@ -8,6 +8,7 @@ export default function ReviewPage() {
 
 	const [formData, setFormData] = useState({
 		journey: '',
+		manualJourney: '',
 		overallRating: 0,
 		serviceRating: 0,
 		authenticityRating: 0,
@@ -22,7 +23,45 @@ export default function ReviewPage() {
 	const [errors, setErrors] = useState({});
 	const [isSubmitted, setIsSubmitted] = useState(false);
 
+	const [reviews, setReviews] = useState([]);
+	const [reviewsLoading, setReviewsLoading] = useState(false);
+	const [reviewsError, setReviewsError] = useState("");
+	
+	const [destinations, setDestinations] = useState([]);
+	const [destinationsLoading, setDestinationsLoading] = useState(false);
+
 	useEffect(() => {
+		const fetchReviews = async () => {
+			try {
+				setReviewsLoading(true);
+				const res = await fetch("http://localhost:5000/api/reviews");
+				if (!res.ok) throw new Error();
+				const data = await res.json();
+				setReviews(data);
+			} catch (err) {
+				setReviewsError("Failed to load reviews.");
+			} finally {
+				setReviewsLoading(false);
+			}
+		};
+
+		const fetchDestinations = async () => {
+			try {
+				setDestinationsLoading(true);
+				const res = await fetch("http://localhost:5000/api/destinations");
+				if (res.ok) {
+					const data = await res.json();
+					setDestinations(data);
+				}
+			} catch (err) {
+				console.error("Failed to load destinations", err);
+			} finally {
+				setDestinationsLoading(false);
+			}
+		};
+
+		fetchReviews();
+		fetchDestinations();
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}, []);
 
@@ -62,15 +101,17 @@ export default function ReviewPage() {
 		}
 	};
 
-	const handleSubmit = (e) => {
+	const handleSubmit = async (e) => {
 		e.preventDefault();
 		const validationErrors = {};
 
 		if (!formData.reviewerName.trim()) {
 			validationErrors.reviewerName = "Please enter your full name.";
 		}
-		if (!formData.journey) {
-			validationErrors.journey = "Please select the journey you experienced.";
+		
+		const actualJourney = formData.journey === "Other" ? formData.manualJourney : formData.journey;
+		if (!actualJourney || !actualJourney.trim()) {
+			validationErrors.journey = "Please select or enter your journey.";
 		}
 		if (formData.overallRating === 0) {
 			validationErrors.overallRating = "Please select an overall experience rating.";
@@ -92,32 +133,47 @@ export default function ReviewPage() {
 			return;
 		}
 
-		// Save the new review object directly into the active local localStorage display list
-		const newReview = {
-			quote: formData.story,
-			name: formData.reviewerName,
-			role: 'Explorer',
-		};
-
-		const storedReviews = localStorage.getItem('gamanaya_reviews');
-		let localList = [];
-		if (storedReviews) {
-			try {
-				localList = JSON.parse(storedReviews);
-			} catch (err) {
-				console.error(err);
+		try {
+			const userInfoString = localStorage.getItem("userInfo");
+			if (!userInfoString) {
+				alert("Please login to submit a review.");
+				return;
 			}
-		}
-		localList.push(newReview);
-		localStorage.setItem('gamanaya_reviews', JSON.stringify(localList));
+			const userInfo = JSON.parse(userInfoString);
 
-		// Success state
-		setErrors({});
-		setIsSubmitted(true);
-		setTimeout(() => {
+			const payload = {
+				reviewerName: userInfo?.name || formData.reviewerName || "Anonymous User",
+				rating: Number(formData.overallRating || 5),
+				reviewTitle: formData.summary || "Travel Review",
+				reviewComment: formData.story || "",
+				journey: actualJourney.trim() || "",
+				serviceRating: Number(formData.serviceRating || 5),
+				authenticityRating: Number(formData.authenticityRating || 5),
+				sustainabilityRating: Number(formData.sustainabilityRating || 5)
+			};
+
+			const response = await fetch("http://localhost:5000/api/reviews", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${userInfo.token}`,
+				},
+				body: JSON.stringify(payload),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || "Failed to submit review");
+			}
+
+			// Success state
+			setErrors({});
+			setIsSubmitted(true);
+			setTimeout(() => {
 			setIsSubmitted(false);
 			setFormData({
 				journey: '',
+				manualJourney: '',
 				overallRating: 0,
 				serviceRating: 0,
 				authenticityRating: 0,
@@ -129,7 +185,10 @@ export default function ReviewPage() {
 				reviewerEmail: '',
 			});
 			navigate('/');
-		}, 2000);
+			}, 3000);
+		} catch (error) {
+			alert(error.message || "An error occurred while submitting.");
+		}
 	};
 
 	return (
@@ -160,9 +219,9 @@ export default function ReviewPage() {
 					{isSubmitted ? (
 						<div className="my-6 bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs font-semibold py-8 px-6 rounded-2xl text-center shadow-sm">
 							<span className="text-2xl block mb-2">🌿</span>
-							<h3 className="font-extrabold text-sm mb-1">Thank you for sharing your journey!</h3>
+							<h3 className="font-extrabold text-sm mb-1">Review submitted successfully. It will be visible after admin approval.</h3>
 							<p className="text-xs text-emerald-600 font-medium">
-								Your review will be verified and published shortly. Your contribution to our Sustainability Fund has been logged.
+								Your contribution to our Sustainability Fund has been logged.
 							</p>
 						</div>
 					) : (
@@ -212,34 +271,60 @@ export default function ReviewPage() {
 							</div>
 							
 							{/* Journey Dropdown */}
-							<div>
-								<label className="block text-xs font-bold text-slate-800 mb-2">
-									Which journey did you experience?
-								</label>
-								<select
-									value={formData.journey}
-									onChange={(e) => {
-										setFormData({ ...formData, journey: e.target.value });
-										if (errors.journey) {
-											setErrors(prev => {
-												const copy = { ...prev };
-												delete copy.journey;
-												return copy;
-											});
-										}
-									}}
-									className="w-full border border-slate-200 rounded px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white focus:border-[#d66847] focus:outline-none transition-colors shadow-sm"
-								>
-									<option value="" disabled>Select a destination or journey...</option>
-									<option value="sigiriya">Sigiriya Rock Fortress Exploration</option>
-									<option value="tea-country">Tea Country Trails (Nuwara Eliya)</option>
-									<option value="southern-coast">Southern Coastal Escape (Galle & Mirissa)</option>
-									<option value="ella">Ella Wilderness Adventure</option>
-									<option value="kandy">Temple of the Sacred Tooth Relic (Kandy)</option>
-									<option value="yala">Yala National Park Wildlife Safari</option>
-								</select>
-								{errors.journey && (
-									<p className="text-red-500 text-[10px] font-bold mt-1.5">{errors.journey}</p>
+							<div className="space-y-4">
+								<div>
+									<label className="block text-xs font-bold text-slate-800 mb-2">
+										Which journey did you experience?
+									</label>
+									<select
+										value={formData.journey}
+										onChange={(e) => {
+											setFormData({ ...formData, journey: e.target.value });
+											if (errors.journey) {
+												setErrors(prev => {
+													const copy = { ...prev };
+													delete copy.journey;
+													return copy;
+												});
+											}
+										}}
+										className="w-full border border-slate-200 rounded px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white focus:border-[#d66847] focus:outline-none transition-colors shadow-sm"
+									>
+										<option value="" disabled>
+											{destinationsLoading ? "Loading journeys..." : "Select a destination or journey..."}
+										</option>
+										{destinations.map(dest => (
+											<option key={dest._id} value={dest.title}>{dest.title}</option>
+										))}
+										<option value="Other">Other</option>
+									</select>
+									{errors.journey && (
+										<p className="text-red-500 text-[10px] font-bold mt-1.5">{errors.journey}</p>
+									)}
+								</div>
+
+								{formData.journey === 'Other' && (
+									<div>
+										<label className="block text-xs font-bold text-slate-800 mb-2">
+											Enter your journey name
+										</label>
+										<input
+											type="text"
+											value={formData.manualJourney}
+											onChange={(e) => {
+												setFormData({ ...formData, manualJourney: e.target.value });
+												if (errors.journey) {
+													setErrors(prev => {
+														const copy = { ...prev };
+														delete copy.journey;
+														return copy;
+													});
+												}
+											}}
+											placeholder="e.g., Hidden Waterfalls Trek"
+											className="w-full border border-slate-200 rounded px-4 py-2.5 text-xs font-semibold text-slate-700 placeholder-slate-300 focus:border-[#d66847] focus:outline-none transition-colors bg-[#fffcfb] shadow-sm"
+										/>
+									</div>
 								)}
 							</div>
 
@@ -421,6 +506,60 @@ export default function ReviewPage() {
 						alt="Sigiriya fortress rock sunset view"
 						className="w-full h-24 object-cover rounded shadow-sm opacity-80 hover:opacity-100 transition-opacity duration-300"
 					/>
+				</div>
+
+				{/* ════════════════════════════════════════════
+				    PUBLIC REVIEWS DISPLAY SECTION
+				    ════════════════════════════════════════════ */}
+				<div className="mt-20 max-w-2xl mx-auto">
+					<h2 className="text-2xl font-extrabold text-[#8e3d23] mb-8 text-center text-slate-800">
+						Traveller Stories
+					</h2>
+					
+					{reviewsLoading ? (
+						<div className="text-center py-10 text-slate-500 font-medium">Loading reviews...</div>
+					) : reviewsError ? (
+						<div className="text-center py-10 text-red-500 font-medium">{reviewsError}</div>
+					) : reviews.length === 0 ? (
+						<div className="text-center py-10 text-slate-500 font-medium border border-slate-100 rounded-lg bg-white shadow-sm">
+							No approved reviews yet.
+						</div>
+					) : (
+						<div className="space-y-6">
+							{reviews.map((review) => (
+								<div key={review._id} className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+									<div className="flex flex-col sm:flex-row justify-between sm:items-start mb-4 gap-2">
+										<div>
+											<h3 className="font-bold text-sm text-slate-900">
+												{review.reviewerName || review.user?.name || "Anonymous Traveler"}
+											</h3>
+											<p className="text-[10px] text-[#1e584a] font-bold uppercase tracking-wider mt-1 bg-[#ecf5f3] px-2 py-0.5 rounded-sm inline-block">
+												{review.journey || "Gamanaya Experience"}
+											</p>
+										</div>
+										<div className="text-left sm:text-right">
+											<div className="flex gap-1 mb-1 sm:justify-end">
+												{[1, 2, 3, 4, 5].map((star) => (
+													<span key={star} className={`text-sm ${star <= (review.rating || 0) ? 'text-[#d66847]' : 'text-slate-200'}`}>
+														★
+													</span>
+												))}
+											</div>
+											<p className="text-[10px] text-slate-400 font-semibold tracking-wide">
+												{new Date(review.createdAt).toLocaleDateString()}
+											</p>
+										</div>
+									</div>
+									<h4 className="text-sm font-bold text-slate-800 mb-2">
+										{review.reviewTitle || "Travel Review"}
+									</h4>
+									<p className="text-xs text-slate-600 leading-relaxed">
+										{review.reviewComment || ""}
+									</p>
+								</div>
+							))}
+						</div>
+					)}
 				</div>
 
 			</section>

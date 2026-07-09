@@ -1,59 +1,156 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import AdminSidebar from '../Components/AdminSidebar';
-
-const bookingsData = [
-  {
-    initials: 'AS',
-    color: 'bg-[#E3D1C7]',
-    name: "Amara Silva",
-    id: "#BK-90210",
-    destination: "Ella Nature Park",
-    type: "Eco-Luxury Stay",
-    dates: "Oct 12 — Oct 18, 2024",
-    nights: "6 Nights",
-    status: "CONFIRMED",
-    price: "$1,450.00"
-  },
-  {
-    initials: 'JW',
-    color: 'bg-[#F2D6B9]',
-    name: "James Wickramage",
-    id: "#BK-90211",
-    destination: "Mirissa Coastal",
-    type: "Whale Watching Tour",
-    dates: "Oct 15 — Oct 16, 2024",
-    nights: "1 Night",
-    status: "PENDING",
-    price: "$420.00"
-  },
-  {
-    initials: 'EM',
-    color: 'bg-[#F7D8D8]',
-    name: "Elena Mendis",
-    id: "#BK-90212",
-    destination: "Kandy Highland",
-    type: "Cultural Heritage",
-    dates: "Oct 20 — Oct 25, 2024",
-    nights: "5 Nights",
-    status: "CONFIRMED",
-    price: "$2,100.00"
-  },
-  {
-    initials: 'SK',
-    color: 'bg-[#D6DFDA]',
-    name: "Saman Kumara",
-    id: "#BK-90213",
-    destination: "Yala Safari",
-    type: "Wildlife Adventure",
-    dates: "Oct 28 — Oct 30, 2024",
-    nights: "2 Nights",
-    status: "CANCELLED",
-    price: "$890.00"
-  }
-];
+import AdminTopbar from '../Components/AdminTopbar';
+import API_BASE_URL from '../api/api';
 
 const ManageBookings = () => {
+  const navigate = useNavigate();
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchBookings = async () => {
+    setLoading(true);
+    try {
+      const token = JSON.parse(localStorage.getItem("userInfo"))?.token;
+      if (!token) throw new Error("No admin token found.");
+      
+      const res = await fetch(`${API_BASE_URL}/api/bookings/admin/all`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      
+      if (!res.ok) throw new Error("Failed to load bookings");
+      
+      const data = await res.json();
+      setBookings(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      const token = JSON.parse(localStorage.getItem("userInfo"))?.token;
+      const res = await fetch(`${API_BASE_URL}/api/bookings/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        fetchBookings();
+      } else {
+        alert("Failed to update status");
+      }
+    } catch (err) {
+      alert("Error updating status");
+    }
+  };
+
+  const handleDelete = async (id) => {
+     if (!window.confirm("Are you sure you want to delete this booking?")) return;
+     try {
+       const token = JSON.parse(localStorage.getItem("userInfo"))?.token;
+       const res = await fetch(`${API_BASE_URL}/api/bookings/${id}`, {
+         method: "DELETE",
+         headers: { "Authorization": `Bearer ${token}` }
+       });
+       if (res.ok) {
+         fetchBookings();
+       } else {
+         alert("Failed to delete booking");
+       }
+     } catch (err) {
+       alert("Error deleting booking");
+     }
+  };
+
+  const exportToCSV = () => {
+    if (bookings.length === 0) {
+      alert("No bookings available to export.");
+      return;
+    }
+
+    const headers = [
+      "Booking ID", "Customer Name", "Phone", "Booking Type", "Destination / Package",
+      "Travel Date", "Travelers", "Status", "Total Amount", "Created Date", "Admin Message"
+    ];
+
+    const generatePlaceName = (bk) => {
+        const rawDest = bk.destination;
+        let title = bk.destination?.title || bk.destination?.name ||
+                  bk.destinationId?.title || bk.destinationId?.name ||
+                  bk.destinationTitle || bk.package?.title || bk.packageId?.title;
+        if (!title && typeof rawDest === 'string') {
+            const isObjectId = /^[0-9a-fA-F]{24}$/.test(rawDest);
+            if (!isObjectId) title = rawDest;
+        }
+        return title || "Destination details unavailable";
+    };
+
+    const escapeCSV = (val) => {
+       if (val === null || val === undefined) return `""`;
+       const str = String(val).replace(/"/g, '""');
+       return `"${str}"`;
+    };
+
+    const rows = bookings.map(bk => {
+      const customerName = bk.fullName || bk.user?.name || "Unknown";
+      const phone = bk.phone || bk.user?.phone || "Not provided";
+      const bookingType = bk.bookingMode || bk.bookingType || "single";
+      const place = generatePlaceName(bk);
+      const travelDateRaw = bk.travelDate ? new Date(bk.travelDate).toLocaleDateString() : 'TBD';
+      const createdDateRaw = bk.createdAt ? new Date(bk.createdAt).toLocaleDateString() : 'TBD';
+      const travelers = bk.travelers || 1;
+      const status = (bk.status || "pending");
+      const totalAmount = bk.totalAmount || bk.estimatedTotal || 0;
+      const adminMessage = bk.adminMessage || "";
+      
+      return [
+        bk._id,
+        customerName,
+        phone,
+        bookingType,
+        place,
+        travelDateRaw,
+        travelers,
+        status,
+        totalAmount,
+        createdDateRaw,
+        adminMessage
+      ].map(escapeCSV).join(",");
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.map(escapeCSV).join(","), ...rows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    const yyyy = new Date().getFullYear();
+    const mm = String(new Date().getMonth() + 1).padStart(2, '0');
+    const dd = String(new Date().getDate()).padStart(2, '0');
+    link.setAttribute("download", `bookings-report-${yyyy}-${mm}-${dd}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const totalBookings = bookings.length;
+  const pending = bookings.filter(b => (b.status || "").toLowerCase() === "pending").length;
+  const confirmed = bookings.filter(b => (b.status || "").toLowerCase() === "confirmed").length;
+  const cancelled = bookings.filter(b => (b.status || "").toLowerCase() === "cancelled").length;
+  const revenue = bookings
+    .filter(b => ["confirmed", "completed"].includes((b.status || "").toLowerCase()))
+    .reduce((sum, b) => sum + (b.totalAmount || b.estimatedTotal || 0), 0);
+
   return (
     <div className="flex h-screen bg-[#F4F8F7] font-sans text-gray-800">
       <AdminSidebar activePage="bookings" />
@@ -61,37 +158,7 @@ const ManageBookings = () => {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-white">
         {/* Top Header */}
-        <header className="flex items-center justify-between px-10 py-5 border-b border-gray-200 sticky top-0 z-10 bg-[#FAFAFA]">
-          <div className="relative w-96">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </span>
-            <input type="text" placeholder="Search users, bookings..." className="w-full py-2.5 pl-10 pr-4 bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#A7412A] outline-none transition-all shadow-sm" />
-          </div>
-
-          <div className="flex items-center space-x-6">
-            <button className="text-gray-500 hover:text-gray-700 relative">
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-[#FAFAFA]"></span>
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </button>
-            <button className="text-gray-500 hover:text-gray-700">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
-            <div className="flex items-center space-x-3 border-l pl-6 border-gray-300">
-              <div className="text-right hidden md:block">
-                <p className="text-sm font-semibold text-gray-800">Admin User</p>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Super Admin</p>
-              </div>
-              <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80" alt="Admin avatar" className="w-9 h-9 rounded-full object-cover border border-gray-200" />
-            </div>
-          </div>
-        </header>
+        <AdminTopbar showSearch={true} />
 
         {/* Page Content */}
         <div className="px-10 py-8 bg-white min-h-[calc(100vh-80px)]">
@@ -108,11 +175,17 @@ const ManageBookings = () => {
                  </svg>
                  Filter
                </button>
-               <button className="flex items-center bg-white border border-gray-200 hover:border-gray-300 text-gray-800 px-4 py-2 rounded shadow-sm font-medium transition-all text-sm">
+               <button onClick={fetchBookings} className="flex items-center bg-white border border-gray-200 hover:border-gray-300 text-gray-800 px-4 py-2 rounded shadow-sm font-medium transition-all text-sm">
+                 <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                 </svg>
+                 Refresh
+               </button>
+               <button onClick={exportToCSV} className="flex items-center bg-white border border-gray-200 hover:border-gray-300 text-gray-800 px-4 py-2 rounded shadow-sm font-medium transition-all text-sm">
                  <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                  </svg>
-                 Export
+                 Export CSV
                </button>
              </div>
            </div>
@@ -121,29 +194,28 @@ const ManageBookings = () => {
            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col">
                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-3">TOTAL BOOKINGS</p>
-                <p className="text-[32px] font-bold text-gray-900 leading-none mb-2">1,284</p>
-                <p className="text-xs font-semibold text-green-600">+12% from last month</p>
+                <p className="text-[32px] font-bold text-gray-900 leading-none mb-2">{totalBookings}</p>
+                <p className="text-xs font-semibold text-gray-400">All time</p>
              </div>
              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col">
                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-3">PENDING CONFIRMATION</p>
-                <p className="text-[32px] font-bold text-[#b55845] leading-none mb-2">42</p>
+                <p className="text-[32px] font-bold text-[#b55845] leading-none mb-2">{pending}</p>
                 <p className="text-xs font-medium text-[#E0AB93]">Action required</p>
              </div>
              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-3">ACTIVE TRAVELS</p>
-                <p className="text-[32px] font-bold text-gray-900 leading-none mb-2">156</p>
-                <p className="text-xs font-medium text-gray-500">Currently in Sri Lanka</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-3">CONFIRMED</p>
+                <p className="text-[32px] font-bold text-gray-900 leading-none mb-2">{confirmed}</p>
+                <p className="text-xs font-medium text-gray-500">Scheduled travels</p>
              </div>
              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col">
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-3">REVENUE (MONTHLY)</p>
-                <p className="text-[32px] font-bold text-gray-900 leading-none mb-2">$24.5k</p>
-                <p className="text-xs font-semibold text-green-600">+5% vs forecast</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-3">REVENUE</p>
+                <p className="text-[32px] font-bold text-gray-900 leading-none mb-2">${(revenue || 0).toLocaleString()}</p>
+                <p className="text-xs font-semibold text-green-600">Total Confirmed</p>
              </div>
            </div>
 
            {/* Table Component */}
            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mb-8">
-              {/* Table Toolbar */}
               <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row gap-4 justify-between items-center bg-white">
                 <div className="relative w-full max-w-md">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -161,86 +233,101 @@ const ManageBookings = () => {
                 </select>
               </div>
 
-              {/* Table Data */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                    <thead className="bg-white border-b border-gray-200">
                       <tr>
                          <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">CUSTOMER</th>
                          <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">DESTINATION</th>
-                         <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">TRAVEL DATES</th>
+                         <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">TRAVEL DATE</th>
                          <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">STATUS</th>
                          <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest whitespace-nowrap">TOTAL PRICE</th>
                          <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">ACTIONS</th>
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-gray-100">
-                      {bookingsData.map((booking, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                           <td className="px-6 py-4">
-                             <div className="flex items-center">
-                               <div className={`w-10 h-10 rounded shadow-sm flex items-center justify-center font-bold text-gray-700 mr-4 ${booking.color}`}>
-                                 {booking.initials}
-                               </div>
-                               <div>
-                                 <div className="font-bold text-gray-900 text-sm whitespace-nowrap">{booking.name}</div>
-                                 <div className="text-gray-500 text-[11px] mt-0.5">{booking.id}</div>
-                               </div>
-                             </div>
-                           </td>
-                           <td className="px-6 py-4 min-w-[180px]">
-                             <div className="font-bold text-gray-900 text-sm">{booking.destination}</div>
-                             <div className="text-gray-500 text-[12px] italic mt-0.5">{booking.type}</div>
-                           </td>
-                           <td className="px-6 py-4 min-w-[160px]">
-                             <div className="text-gray-900 font-semibold text-sm">{booking.dates}</div>
-                             <div className="text-gray-500 text-[11px] mt-0.5">{booking.nights}</div>
-                           </td>
-                           <td className="px-6 py-4 text-center">
-                             <span className={`px-3 py-1.5 text-[10px] font-bold rounded-full border tracking-wide ${
-                               booking.status === 'CONFIRMED' 
-                               ? 'bg-green-50 text-green-700 border-green-200' 
-                               : booking.status === 'PENDING'
-                               ? 'bg-orange-50 text-orange-600 border-orange-200'
-                               : 'bg-red-50 text-red-600 border-red-200'
-                             }`}>
-                               {booking.status}
-                             </span>
-                           </td>
-                           <td className="px-6 py-4">
-                             <div className="text-gray-900 font-bold text-sm whitespace-nowrap">{booking.price}</div>
-                           </td>
-                           <td className="px-6 py-4 text-right">
-                              <button className="text-gray-400 hover:text-gray-800 transition-colors">
-                                <svg className="w-5 h-5 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                                </svg>
-                              </button>
-                           </td>
-                        </tr>
-                      ))}
+                      {loading ? (
+                        <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">Loading bookings...</td></tr>
+                      ) : error ? (
+                        <tr><td colSpan="6" className="px-6 py-8 text-center text-red-500 text-sm font-semibold">{error}</td></tr>
+                      ) : bookings.length === 0 ? (
+                        <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">No bookings found.</td></tr>
+                      ) : bookings.map((booking) => {
+                         const customerName = booking.fullName || booking.user?.name || "Unknown";
+                         const phone = booking.phone || booking.user?.phone || "Not provided";
+                         const bookingType = booking.bookingMode || booking.bookingType || "single";
+                         const rawDest = booking.destination;
+                         let destinationName = booking.destination?.title || booking.destination?.name ||
+                                               booking.destinationId?.title || booking.destinationId?.name ||
+                                               booking.destinationTitle || booking.package?.title || booking.packageId?.title;
+                         if (!destinationName && typeof rawDest === 'string') {
+                             const isObjectId = /^[0-9a-fA-F]{24}$/.test(rawDest);
+                             if (!isObjectId) destinationName = rawDest;
+                         }
+                         const placeName = destinationName || "Destination details unavailable";
+                         const totalAmount = booking.totalAmount || booking.estimatedTotal || 0;
+                         const status = (booking.status || "pending").toUpperCase();
+                         const initials = customerName.substring(0, 2).toUpperCase();
+                         const travelDateRaw = booking.travelDate ? new Date(booking.travelDate) : null;
+                         const travelDateStr = travelDateRaw ? travelDateRaw.toLocaleDateString() : 'TBD';
+                         
+                         return (
+                           <tr key={booking._id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center">
+                                <div className="w-10 h-10 rounded shadow-sm flex items-center justify-center font-bold text-gray-700 mr-4 bg-[#E3D1C7]">
+                                  {initials}
+                                </div>
+                                <div>
+                                  <div className="font-bold text-gray-900 text-sm whitespace-nowrap">{customerName}</div>
+                                  <div className="text-gray-500 text-[11px] mt-0.5">{phone}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 min-w-[180px]">
+                              <div className="font-bold text-gray-900 text-sm max-w-[200px] truncate">{placeName}</div>
+                              <div className="text-gray-500 text-[12px] italic mt-0.5 capitalize">{bookingType}</div>
+                            </td>
+                            <td className="px-6 py-4 min-w-[160px]">
+                              <div className="text-gray-900 font-semibold text-sm">{travelDateStr}</div>
+                              <div className="text-gray-500 text-[11px] mt-0.5">{booking.travelers} Travelers</div>
+                            </td>
+                            <td className="px-6 py-4 text-center text-[10px]">
+                               <select 
+                                 value={(booking.status || "pending").toLowerCase()} 
+                                 onChange={(e) => handleStatusChange(booking._id, e.target.value)}
+                                 className={`px-3 py-1.5 font-bold rounded-full border tracking-wide cursor-pointer appearance-none text-center outline-none ${
+                                  status === 'CONFIRMED' 
+                                  ? 'bg-green-50 text-green-700 border-green-200' 
+                                  : status === 'PENDING'
+                                  ? 'bg-orange-50 text-orange-600 border-orange-200'
+                                  : 'bg-red-50 text-red-600 border-red-200'
+                                 }`}>
+                                 <option value="pending">Pending</option>
+                                 <option value="confirmed">Confirmed</option>
+                                 <option value="completed">Completed</option>
+                                 <option value="cancelled">Cancelled</option>
+                               </select>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-gray-900 font-bold text-sm whitespace-nowrap">LKR {totalAmount.toLocaleString()}</div>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                               <button onClick={() => handleDelete(booking._id)} className="text-red-400 hover:text-red-600 transition-colors" title="Delete Booking">
+                                 <svg className="w-5 h-5 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                 </svg>
+                               </button>
+                            </td>
+                         </tr>
+                         );
+                      })}
                    </tbody>
                 </table>
               </div>
               
-              {/* Pagination */}
               <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-[#FAFAFA]">
-                 <span className="text-[11px] font-medium text-gray-500">Showing 1 to 4 of 1,284 bookings</span>
-                 <div className="flex items-center space-x-1">
-                    <button className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 transition-colors">
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded text-white bg-[#8e3723] font-bold text-xs shadow-sm">1</button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded text-gray-700 hover:bg-gray-100 transition-colors font-bold text-xs">2</button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded text-gray-700 hover:bg-gray-100 transition-colors font-bold text-xs">3</button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 transition-colors">
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                 </div>
+                 <span className="text-[11px] font-medium text-gray-500">Showing {bookings.length} bookings</span>
               </div>
            </div>
 
@@ -290,42 +377,19 @@ const ManageBookings = () => {
              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm flex flex-col">
                 <h3 className="text-lg font-bold text-gray-900 mb-6">Live Logs</h3>
                 <div className="flex-1 space-y-6">
-                  {/* Log 1 */}
-                  <div className="flex items-start">
-                    <div className="w-8 h-8 rounded-full bg-green-50 text-green-500 flex items-center justify-center shrink-0 mr-4 border border-green-100">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      </svg>
+                  {bookings.slice(0,3).map(b => (
+                    <div key={b._id} className="flex items-start">
+                      <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 mr-4 border border-blue-100">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">Booking {b.status}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">#{b._id.slice(-6)} - {new Date(b.createdAt).toLocaleDateString()}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">Payment verified</p>
-                      <p className="text-[11px] text-gray-500 mt-1">#BK-90212 - 2 mins ago</p>
-                    </div>
-                  </div>
-                  {/* Log 2 */}
-                  <div className="flex items-start">
-                    <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center shrink-0 mr-4 border border-orange-100">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">New booking request</p>
-                      <p className="text-[11px] text-gray-500 mt-1">#BK-90215 - 14 mins ago</p>
-                    </div>
-                  </div>
-                  {/* Log 3 */}
-                  <div className="flex items-start">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 mr-4 border border-blue-100">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">Customer message</p>
-                      <p className="text-[11px] text-gray-500 mt-1">#BK-90110 - 1 hour ago</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
                 <button className="w-full mt-6 py-2.5 border border-gray-200 rounded font-bold text-gray-700 text-xs tracking-wide hover:bg-gray-50 transition-colors">
                   View All Activity

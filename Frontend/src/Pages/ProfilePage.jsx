@@ -311,6 +311,10 @@ export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [profileError, setProfileError] = useState('');
 
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsError, setBookingsError] = useState("");
+
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -375,6 +379,27 @@ export default function ProfilePage() {
     };
 
     fetchProfile();
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      const token = getToken();
+      if (!token || !isAuthenticated) return;
+      try {
+        setBookingsLoading(true);
+        const res = await fetch(`${API_BASE_URL}/api/bookings/my-bookings`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error("Failed to load bookings");
+        const data = await res.json();
+        setBookings(data);
+      } catch (err) {
+        setBookingsError(err.message);
+      } finally {
+        setBookingsLoading(false);
+      }
+    };
+    fetchBookings();
   }, [isAuthenticated]);
 
   const enterEdit = () => {
@@ -871,63 +896,80 @@ export default function ProfilePage() {
               </p>
 
               <div className="space-y-4">
-                {[
-                  {
-                    id: 'BK-8902',
-                    destination: 'Nine Arches Bridge — Ella',
-                    date: 'August 14, 2026',
-                    travelers: 2,
-                    price: 'Rs. 43,000.00',
-                    status: 'Confirmed',
-                    statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-                  },
-                  {
-                    id: 'BK-5491',
-                    destination: 'Yala National Park Safari',
-                    date: 'September 22, 2026',
-                    travelers: 4,
-                    price: 'Rs. 72,500.00',
-                    status: 'Pending Inquiry',
-                    statusClass: 'bg-amber-50 text-amber-700 border-amber-100',
-                  },
-                ].map((bk) => (
-                  <div
-                    key={bk.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-[#d66847]/20 transition-all duration-200 gap-3"
-                    style={{ background: '#fafaf8' }}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          {bk.id}
-                        </span>
+                {bookingsLoading ? (
+                  <p className="text-sm font-semibold text-slate-500 py-4 text-center">Loading your bookings...</p>
+                ) : bookingsError ? (
+                  <p className="text-sm font-semibold text-red-500 py-4 text-center">{bookingsError}</p>
+                ) : bookings.length === 0 ? (
+                  <p className="text-sm font-semibold text-slate-500 py-4 text-center">No bookings found.</p>
+                ) : (
+                  bookings.map((bk) => {
+                    const bookingId = bk._id;
+                    const bookingType = bk.bookingMode || bk.bookingType || "single";
+                    let title = bk.destination?.title || bk.destination?.name || bk.destinationTitle || bk.package?.title || bk.packageTitle;
+                    if (!title && typeof bk.destination === 'string') {
+                      title = /^[0-9a-fA-F]{24}$/.test(bk.destination) ? "Destination details unavailable" : bk.destination;
+                    }
+                    title = title || "Not specified";
+                    const travelDateRaw = bk.travelDate ? new Date(bk.travelDate) : null;
+                    const travelDate = travelDateRaw ? travelDateRaw.toLocaleDateString() : 'TBD';
+                    const travelers = bk.travelers || 1;
+                    const totalAmount = bk.totalAmount || bk.estimatedTotal || 0;
+                    const status = (bk.status || "pending").toLowerCase();
+                    const adminMessage = bk.adminMessage || "";
+                    
+                    let statusClass = "bg-slate-50 text-slate-700 border-slate-100";
+                    if (status === 'confirmed') statusClass = "bg-emerald-50 text-emerald-700 border-emerald-100";
+                    else if (status === 'pending') statusClass = "bg-amber-50 text-amber-700 border-amber-100";
+                    else if (status === 'cancelled') statusClass = "bg-red-50 text-red-700 border-red-100";
+                    else if (status === 'completed') statusClass = "bg-blue-50 text-blue-700 border-blue-100";
 
-                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${bk.statusClass}`}>
-                          {bk.status}
-                        </span>
+                    return (
+                      <div
+                        key={bookingId}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-[#d66847]/20 transition-all duration-200 gap-3"
+                        style={{ background: '#fafaf8' }}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              #{bookingId.slice(-8)}
+                            </span>
+
+                            <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusClass}`}>
+                              {bk.status || "Pending"}
+                            </span>
+                          </div>
+
+                          <h4 className="text-xs font-bold text-slate-800">
+                            {title}
+                          </h4>
+
+                          <p className="text-[10px] text-slate-500 mt-1">
+                            Type: <span className="font-semibold text-slate-700 capitalize mr-1">{bookingType}</span> &bull; 
+                            Date: <span className="font-semibold text-slate-700 mx-1">{travelDate}</span> &bull; 
+                            Travelers: <span className="font-semibold text-slate-700 ml-1">{travelers}</span>
+                          </p>
+                          {adminMessage && (
+                            <p className="text-[10px] text-slate-600 mt-2 bg-slate-100 p-2 rounded italic">
+                              <span className="font-bold mr-1">Admin:</span>{adminMessage}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="sm:text-right border-t sm:border-t-0 border-slate-200/50 pt-2 sm:pt-0 shrink-0">
+                          <span className="text-[9px] block text-slate-400 font-bold uppercase tracking-wider">
+                            Total amount
+                          </span>
+
+                          <span className="text-sm font-black text-slate-800">
+                            Rs. {totalAmount.toLocaleString()}
+                          </span>
+                        </div>
                       </div>
-
-                      <h4 className="text-xs font-bold text-slate-800">
-                        {bk.destination}
-                      </h4>
-
-                      <p className="text-[10px] text-slate-500 mt-1">
-                        Date: <span className="font-semibold text-slate-700">{bk.date}</span> &bull; Travelers:{' '}
-                        <span className="font-semibold text-slate-700">{bk.travelers}</span>
-                      </p>
-                    </div>
-
-                    <div className="sm:text-right border-t sm:border-t-0 border-slate-200/50 pt-2 sm:pt-0">
-                      <span className="text-[9px] block text-slate-400 font-bold uppercase tracking-wider">
-                        Estimated Total
-                      </span>
-
-                      <span className="text-sm font-black text-slate-800">
-                        {bk.price}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })
+                )}
               </div>
             </div>
 

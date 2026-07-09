@@ -45,7 +45,39 @@ const getContactMessages = async (req, res) => {
   }
 };
 
+// PUT /api/contact/:id/read
+const markAsRead = async (req, res) => {
+  try {
+    const contact = await Contact.findByIdAndUpdate(
+      req.params.id,
+      { isRead: true, status: "Read" },
+      { new: true }
+    );
+    if (!contact) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+    res.status(200).json(contact);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to mark as read", error: error.message });
+  }
+};
+
+// DELETE /api/contact/:id
+const deleteMessage = async (req, res) => {
+  try {
+    const contact = await Contact.findByIdAndDelete(req.params.id);
+    if (!contact) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+    res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete message", error: error.message });
+  }
+};
+
 module.exports = {
   createContactMessage,
   getContactMessages,
+  markAsRead,
+  deleteMessage,
 };

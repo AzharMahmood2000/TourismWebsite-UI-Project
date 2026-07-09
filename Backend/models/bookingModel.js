@@ -21,12 +21,22 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
     destination: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Destination",
+      required: false,
+    },
+    destinationTitle: {
       type: String,
-      required: true,
+      default: "",
     },
     packageTitle: {
       type: String,
       default: "",
+    },
+    packageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Package",
+      required: false,
     },
     travelDate: {
       type: Date,
@@ -43,7 +53,7 @@ const bookingSchema = new mongoose.Schema(
     },
     bookingMode: {
       type: String,
-      enum: ["destination", "package", "custom"],
+      enum: ["destination", "package", "custom", "single"],
       default: "destination",
     },
     selectedServices: {
@@ -58,6 +68,10 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       enum: ["Pending", "Confirmed", "Cancelled", "Completed"],
       default: "Pending",
+    },
+    adminMessage: {
+      type: String,
+      default: "",
     },
   },
   { timestamps: true }

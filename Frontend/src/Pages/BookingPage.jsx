@@ -175,17 +175,22 @@ export default function BookingPage() {
 				setAllDestinations(dbDestinations);
 
 				if (queryType === 'single' && queryDestinationId) {
-					const destinationFound = dbDestinations.find(d => d._id === queryDestinationId);
-					if (destinationFound) {
-						setFetchedDest(destinationFound);
-						setFormData(prev => ({ ...prev, destination: destinationFound._id }));
+					try {
+						const resDest = await fetch(`${API_BASE_URL}/api/destinations/${queryDestinationId}`);
+						if (resDest.ok) {
+							const destinationFound = await resDest.json();
+							setFetchedDest(destinationFound);
+							setFormData(prev => ({ ...prev, destination: destinationFound._id }));
 
-						if (destinationFound.singleVisit?.addOns?.length) {
-							const addonServices = destinationFound.singleVisit.addOns.map((addId, idx) => [
-								`addon_${idx}`, true
-							]);
-							setSelectedServices(prev => ({ ...prev, ...Object.fromEntries(addonServices) }));
+							if (destinationFound.singleVisit?.addOns?.length) {
+								const addonServices = destinationFound.singleVisit.addOns.map((add, idx) => [
+									`addon_${idx}`, true
+								]);
+								setSelectedServices(prev => ({ ...prev, ...Object.fromEntries(addonServices) }));
+							}
 						}
+					} catch (e) {
+						console.error("Failed to fetch specific destination.", e);
 					}
 				}
 			} catch (e) {
@@ -218,7 +223,7 @@ export default function BookingPage() {
 	const defaultPrice = 'LKR 45,000';
 	const displayPrice = bookingMode === 'single' && fetchedDest?.singleVisit?.pricePerPerson 
       ? `Rs. ${fetchedDest.singleVisit.pricePerPerson}`
-      : (fetchedPackage?.price ? `Rs. ${fetchedPackage.price}` : locationState?.price || defaultPrice);
+      : (fetchedPackage?.pricePerPerson ? `Rs. ${fetchedPackage.pricePerPerson}` : (fetchedPackage?.price ? `Rs. ${fetchedPackage.price}` : locationState?.price || defaultPrice));
 	const basePrice = parseInt(displayPrice.replace(/[^0-9]/g, '')) || 45000;
 	const currencyPrefix = displayPrice.trim().toLowerCase().startsWith('rs') ? 'Rs. ' : 'LKR ';
 
@@ -258,12 +263,59 @@ export default function BookingPage() {
 		setFormData({ ...formData, travelers: parseInt(e.target.value) || 1 });
 	};
 
-	const handleSubmit = (e) => {
+	const handleSubmit = async (e) => {
 		e.preventDefault();
 		const errs = validateForm();
 		if (Object.keys(errs).length) { setFormErrors(errs); return; }
 		setFormErrors({});
-		navigate('/booking-success');
+
+		try {
+			const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+			const token = userInfo?.token;
+
+			const selectedAddOnsData = activeServices
+				.filter(s => selectedServices[s.id])
+				.map(s => ({ name: s.label, price: s.price }));
+
+			const totalAmount = bookingMode === 'package' 
+				? basePrice * formData.travelers 
+				: (basePrice + serviceAddons) * formData.travelers;
+
+			const payload = {
+				bookingType: bookingMode,
+				fullName: formData.fullName,
+				phone: formData.phone,
+				travelDate: formData.travelDate,
+				travelers: formData.travelers,
+				specialRequests: formData.notes,
+				selectedAddOns: selectedAddOnsData,
+				totalAmount
+			};
+            if (bookingMode === 'package') {
+                payload.packageId = formData.destination;
+            } else {
+                payload.destinationId = formData.destination;
+            }
+
+			const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					...(token ? { Authorization: `Bearer ${token}` } : {})
+				},
+				body: JSON.stringify(payload)
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.message || 'Failed to submit booking');
+			}
+
+			navigate('/booking-success');
+		} catch (error) {
+			console.error('Booking error:', error);
+			alert(error.message || 'An error occurred while submitting your booking.');
+		}
 	};
 
 	const handleDestinationChange = (e) => {
@@ -318,7 +370,7 @@ export default function BookingPage() {
 		}`;
 
 	const getImageSrc = (img) => {
-		if (!img || typeof img !== 'string') return '';
+		if (!img || typeof img !== 'string') return '/assets/images/cultural_heritage_expedition.jpg';
 		if (img.startsWith('http') || img.startsWith('data:')) return img;
 		return `${API_BASE_URL}${img.startsWith('/') ? img : `/${img}`}`;
 	};
@@ -336,27 +388,18 @@ export default function BookingPage() {
 		bookingMode === 'package' 
             ? fetchedPackage?.duration || '3 Nights / 4 Days' 
             : fetchedDest?.singleVisit?.duration || '1 Day · Sunrise to Sunset';
+	const packageImage =
+		fetchedPackage?.coverImage ||
+		fetchedPackage?.image ||
+		fetchedPackage?.packageImage ||
+		fetchedPackage?.galleryImages?.[0] ||
+		"";
+	console.log("Selected package image:", packageImage);
+
 	const sidebarImage =
 		bookingMode === 'package'
-			? (fetchedPackage?.image ? getImageSrc(fetchedPackage.image) : '/assets/images/cultural_heritage_expedition.jpg')
+			? (packageImage ? getImageSrc(packageImage) : '/assets/images/cultural_heritage_expedition.jpg')
 			: (fetchedDest?.image ? getImageSrc(fetchedDest.image) : '/assets/images/Sigiriya/sigiriya%201.jpg');
-
-	// Mapping of package titles to their grouped dynamic route milestones
-	const getRouteMilestones = (title) => {
-		const key = (title || '').trim().toUpperCase();
-		const routeMilestones = {
-			'TEA COUNTRY TRAILS': 'Highland Journey: Nuwara Eliya, Ella & Kandy',
-			'SOUTHERN COASTAL ESCAPE': 'Coastal Expedition: Galle, Mirissa & Trincomalee',
-			'ANCIENT KINGDOM TOUR': 'Cultural Triangle Tour: Sigiriya, Polonnaruwa & Dambulla',
-			'WILDHEART OF YALA': 'Wilderness Trail: Yala Safari, Udawalawe & Ella',
-			'CENTRAL HIGHLANDS SECRET': 'Highlands Secret: Horton Plains, Diyaluma & Ravana',
-			'SOUL OF KANDY': 'Spiritual Heart: Temple of Tooth, Peradeniya & Kandy Lake',
-			'CULTURAL HERITAGE EXPEDITION': 'Cultural Triangle Tour: Sigiriya, Dambulla & Kandy',
-		};
-		return routeMilestones[key] || routeMilestones['CULTURAL HERITAGE EXPEDITION'];
-	};
-
-	const packageRouteMilestones = getRouteMilestones(sidebarTitle);
 
 	return (
 		<div className="min-h-screen bg-[#fffaf8] relative w-full block font-sans">
@@ -448,15 +491,25 @@ export default function BookingPage() {
 							<div className="mt-5 space-y-2">
 								{bookingMode === 'package' ? (
 									<>
-										{/* Dynamic Route Milestones Title */}
+										{/* Package Title from API */}
 										<h2 className="text-base font-extrabold text-slate-900 tracking-tight leading-snug">
-											{packageRouteMilestones}
+											{sidebarTitle}
 										</h2>
 										<div className="flex items-center gap-1.5 mt-1">
 											<span className="text-[10px] text-[#d66847] font-bold uppercase tracking-wider bg-[#d66847]/5 px-2 py-0.5 rounded">
-												{sidebarTitle}
+												{fetchedPackage?.category || 'Package'}
 											</span>
+											{(fetchedPackage?.location) && (
+												<span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded">
+													{fetchedPackage.location}
+												</span>
+											)}
 										</div>
+										{fetchedPackage?.shortDescription && (
+											<p className="text-[11px] text-slate-500 leading-relaxed mt-2">
+												{fetchedPackage.shortDescription}
+											</p>
+										)}
 									</>
 								) : (
 									<h2 className="text-base font-extrabold text-slate-900 tracking-tight leading-snug">

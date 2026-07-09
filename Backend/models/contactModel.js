@@ -29,6 +29,10 @@ const contactSchema = new mongoose.Schema(
       enum: ["New", "Read", "Replied"],
       default: "New",
     },
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

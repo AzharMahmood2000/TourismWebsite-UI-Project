@@ -1,106 +1,133 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AdminSidebar from '../Components/AdminSidebar';
-
-const messagesData = [
-  {
-    initials: "AS",
-    name: "Anura Samaraweera",
-    email: "anura.s@example.com",
-    subject: "Custom Honeymoon Inquiry for Kandy",
-    preview: "We are looking for a boutique experience with a private guide...",
-    status: "NEW",
-    date: "Oct 24, 2023",
-    time: "10:30 AM",
-    replied: false
-  },
-  {
-    initials: "EL",
-    name: "Elena Larsson",
-    email: "e.larsson@nordic-travel.se",
-    subject: "Group Booking Inquiry (15 pax)",
-    preview: "Planning a yoga retreat in the southern coast for early 2024...",
-    status: "READ",
-    date: "Oct 23, 2023",
-    time: "04:15 PM",
-    replied: false
-  },
-  {
-    initials: "JM",
-    name: "Julian Miller",
-    email: "julian.miller@voyage.com",
-    subject: "Partnership Proposal: Content Creator",
-    preview: "I will be visiting Sigiriya next month and would love to feature...",
-    status: "REPLIED",
-    date: "Oct 22, 2023",
-    time: "09:00 AM",
-    replied: true
-  },
-  {
-    initials: "MK",
-    name: "Minoli Karunaratne",
-    email: "minoli.k@gmail.com",
-    subject: "Question about Airport Pickup",
-    preview: "Does the package include luxury sedan transport from BIA?",
-    status: "READ",
-    date: "Oct 21, 2023",
-    time: "11:45 PM",
-    replied: false
-  },
-  {
-    initials: "DR",
-    name: "David Richards",
-    email: "d.richards@adventures.au",
-    subject: "Villa Availability for Christmas",
-    preview: "Looking for a 4-bedroom beachfront villa in Mirissa...",
-    status: "REPLIED",
-    date: "Oct 20, 2023",
-    time: "02:30 PM",
-    replied: true
-  }
-];
+import AdminTopbar from '../Components/AdminTopbar';
 
 const ManageMessages = () => {
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const fetchMessages = async () => {
+    try {
+      setLoading(true);
+      const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+      const res = await fetch("http://localhost:5000/api/contact", {
+        headers: { Authorization: `Bearer ${userInfo?.token}` }
+      });
+      if (!res.ok) throw new Error("Failed to load");
+      const data = await res.json();
+      setMessages(data);
+    } catch (err) {
+      setError("Failed to load messages.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMessages();
+  }, []);
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+      const res = await fetch(`http://localhost:5000/api/contact/${id}/read`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${userInfo?.token}` }
+      });
+      if (res.ok) fetchMessages();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this message?")) return;
+    try {
+      const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+      const res = await fetch(`http://localhost:5000/api/contact/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${userInfo?.token}` }
+      });
+      if (res.ok) fetchMessages();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const totalMessages = messages.length;
+  const unreadMessages = messages.filter(m => !m.isRead && m.status === 'New').length;
+  const readMessages = messages.filter(m => m.isRead || m.status !== 'New').length;
+
+  const filteredMessages = messages.filter(m => 
+    (m.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (m.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (m.subject || "").toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const messagesPerPage = 5;
+  const totalPages = Math.ceil(filteredMessages.length / messagesPerPage);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
+
+  const startIndex = (currentPage - 1) * messagesPerPage;
+  const currentMessages = filteredMessages.slice(startIndex, startIndex + messagesPerPage);
+
   return (
     <div className="flex h-screen bg-[#F4F8F7] font-sans text-gray-800">
       <AdminSidebar activePage="messages" />
 
+      {/* View Modal */}
+      {selectedMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-8 relative">
+            <button 
+              onClick={() => setSelectedMessage(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-900"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <h3 className="text-xl font-bold mb-4">{selectedMessage.subject || "No Subject"}</h3>
+            <div className="text-sm text-gray-500 mb-6">
+              <p><strong>From:</strong> {selectedMessage.name} ({selectedMessage.email})</p>
+              {selectedMessage.phone && <p><strong>Phone:</strong> {selectedMessage.phone}</p>}
+              <p><strong>Date:</strong> {new Date(selectedMessage.createdAt).toLocaleString()}</p>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap text-gray-800 text-sm border border-gray-100">
+              {selectedMessage.message}
+            </div>
+            <div className="mt-8 flex justify-end gap-3">
+              <button 
+                onClick={() => setSelectedMessage(null)}
+                className="px-4 py-2 bg-gray-100 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-white">
         {/* Top Header */}
-        <header className="flex items-center justify-between px-10 py-5 border-b border-gray-200 sticky top-0 z-10 bg-white">
-          <div className="relative w-96">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </span>
-            <input type="text" placeholder="Search messages..." className="w-full py-2.5 pl-10 pr-4 bg-[#F9FAFB] border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#A7412A] outline-none transition-all" />
-          </div>
-
-          <div className="flex items-center space-x-6">
-            <button className="text-gray-500 hover:text-gray-700 relative">
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </button>
-            
-            <button className="text-gray-500 hover:text-gray-700">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
-
-            <div className="flex items-center space-x-3 border-l pl-6 border-gray-300">
-              <div className="text-right hidden md:block">
-                <p className="text-sm font-semibold text-gray-800">Admin User</p>
-                <p className="text-xs text-gray-500">Super Admin</p>
-              </div>
-              <img src="https://i.pravatar.cc/150?u=a042581f4e29026024d" alt="Admin avatar" className="w-10 h-10 rounded-full object-cover border-2 border-gray-200" />
-            </div>
-          </div>
-        </header>
+        <AdminTopbar 
+          showSearch={true}
+          searchPlaceholder="Search messages..."
+          searchQuery={searchQuery}
+          onSearch={(e) => {
+            setSearchQuery(e.target.value);
+            setCurrentPage(1);
+          }}
+        />
 
         {/* Path/Title */}
         <div className="px-10 py-8 bg-white min-h-[calc(100vh-80px)]">
@@ -131,34 +158,30 @@ const ManageMessages = () => {
              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
                 <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-3">Total Messages</p>
                 <div className="flex items-end">
-                  <span className="text-3xl font-extrabold text-gray-900 mr-2">1,284</span>
-                  <span className="font-bold text-[#A7412A] text-sm mb-1">+12%</span>
+                  <span className="text-3xl font-extrabold text-gray-900 mr-2">{totalMessages}</span>
                 </div>
              </div>
              {/* Stat 2 */}
              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
                 <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-3">Unread</p>
                 <div className="flex items-end">
-                  <span className="text-3xl font-extrabold text-[#A7412A] mr-2">24</span>
-                  <span className="font-medium text-gray-600 text-sm mb-1">New today</span>
+                  <span className="text-3xl font-extrabold text-[#A7412A] mr-2">{unreadMessages}</span>
                 </div>
              </div>
              {/* Stat 3 */}
              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-3">Avg. Response Time</p>
+                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-3">Read</p>
                 <div className="flex items-end">
-                  <span className="text-3xl font-extrabold text-gray-900 mr-2">4.2h</span>
-                  <span className="font-bold text-[#A7412A] text-sm mb-1">Excellent</span>
+                  <span className="text-3xl font-extrabold text-gray-900 mr-2">{readMessages}</span>
                 </div>
              </div>
              {/* Stat 4 */}
              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
                 <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-3">Replied Rate</p>
                 <div className="flex items-center mt-1">
-                  <span className="text-3xl font-extrabold text-gray-900 mr-2">96.8%</span>
-                  <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <span className="text-3xl font-extrabold text-gray-900 mr-2">
+                    {totalMessages > 0 ? Math.round((readMessages / totalMessages) * 100) : 0}%
+                  </span>
                 </div>
              </div>
            </div>
@@ -177,91 +200,114 @@ const ManageMessages = () => {
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-gray-200">
-                      {messagesData.map((msg, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                           <td className="px-6 py-6">
-                             <div className="flex items-center">
-                               <div className="w-10 h-10 bg-[#FAD8C3] text-[#A7412A] rounded-full flex items-center justify-center font-bold mr-3 shrink-0">{msg.initials}</div>
-                               <div className="min-w-0">
-                                 <h3 className="font-bold text-[14px] text-gray-900 truncate">{msg.name}</h3>
-                                 <p className="text-[12px] text-gray-500 truncate mt-0.5">{msg.email}</p>
+                      {loading ? (
+                        <tr>
+                          <td colSpan="5" className="px-6 py-12 text-center text-gray-500 font-bold">Loading messages...</td>
+                        </tr>
+                      ) : error ? (
+                        <tr>
+                          <td colSpan="5" className="px-6 py-12 text-center text-red-500 font-bold">{error}</td>
+                        </tr>
+                      ) : filteredMessages.length === 0 ? (
+                        <tr>
+                          <td colSpan="5" className="px-6 py-12 text-center text-gray-500 font-bold">No messages found.</td>
+                        </tr>
+                      ) : (
+                        currentMessages.map((msg) => (
+                          <tr key={msg._id} className="hover:bg-gray-50 transition-colors">
+                             <td className="px-6 py-6">
+                               <div className="flex items-center">
+                                 <div className="w-10 h-10 bg-[#FAD8C3] text-[#A7412A] rounded-full flex items-center justify-center font-bold mr-3 shrink-0">
+                                   {msg.name ? msg.name.substring(0, 2).toUpperCase() : "?"}
+                                 </div>
+                                 <div className="min-w-0">
+                                   <h3 className="font-bold text-[14px] text-gray-900 truncate">{msg.name}</h3>
+                                   <p className="text-[12px] text-gray-500 truncate mt-0.5">{msg.email}</p>
+                                 </div>
                                </div>
-                             </div>
-                           </td>
-                           <td className="px-6 py-6">
-                             <div>
-                               <h4 className="font-bold text-gray-900 text-[14px]">{msg.subject}</h4>
-                               <p className="text-[13px] text-gray-500 mt-1 truncate">{msg.preview}</p>
-                             </div>
-                           </td>
-                           <td className="px-6 py-6">
-                             <span className={`px-2.5 py-1 text-[11px] font-extrabold rounded-full tracking-wide ${
-                               msg.status === 'NEW' || msg.status === 'REPLIED'
-                               ? 'bg-orange-100 text-[#A7412A]' 
-                               : 'bg-gray-200 text-gray-700'
-                             }`}>
-                               {msg.status}
-                             </span>
-                           </td>
-                           <td className="px-6 py-6">
-                             <div className="text-gray-900 font-bold text-[13px] whitespace-pre-line leading-snug">
-                               {msg.date}<br/>
-                               <span className="text-xs text-gray-500 font-normal">{msg.time}</span>
-                             </div>
-                           </td>
-                           <td className="px-6 py-6 text-right">
-                              <div className="flex items-center justify-end space-x-4">
-                                {msg.replied && (
-                                  <svg className="w-5 h-5 text-[#A7412A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                )}
-                                <button className="text-gray-600 hover:text-gray-900 transition-colors">
-                                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                </button>
-                                {!msg.replied && (
-                                  <button className="text-gray-600 hover:text-gray-900 transition-colors">
+                             </td>
+                             <td className="px-6 py-6">
+                               <div>
+                                 <h4 className="font-bold text-gray-900 text-[14px]">{msg.subject || "No Subject"}</h4>
+                                 <p className="text-[13px] text-gray-500 mt-1 truncate max-w-xs">{msg.message}</p>
+                               </div>
+                             </td>
+                             <td className="px-6 py-6">
+                               <span className={`px-2.5 py-1 text-[11px] font-extrabold rounded-full tracking-wide ${
+                                 !msg.isRead && msg.status === 'New'
+                                 ? 'bg-orange-100 text-[#A7412A]' 
+                                 : 'bg-gray-200 text-gray-700'
+                               }`}>
+                                 {msg.isRead ? "READ" : msg.status.toUpperCase()}
+                               </span>
+                             </td>
+                             <td className="px-6 py-6">
+                               <div className="text-gray-900 font-bold text-[13px] whitespace-pre-line leading-snug">
+                                 {new Date(msg.createdAt).toLocaleDateString()}<br/>
+                                 <span className="text-xs text-gray-500 font-normal">{new Date(msg.createdAt).toLocaleTimeString()}</span>
+                               </div>
+                             </td>
+                             <td className="px-6 py-6 text-right">
+                                <div className="flex items-center justify-end space-x-4">
+                                  <button onClick={() => setSelectedMessage(msg)} title="View Message" className="text-gray-600 hover:text-gray-900 transition-colors">
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                     </svg>
                                   </button>
-                                )}
-                                <button className="text-gray-600 hover:text-red-600 transition-colors">
-                                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              </div>
-                           </td>
-                        </tr>
-                      ))}
+                                  {(!msg.isRead && msg.status === 'New') && (
+                                    <button onClick={() => handleMarkAsRead(msg._id)} title="Mark as Read" className="text-gray-600 hover:text-green-600 transition-colors">
+                                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    </button>
+                                  )}
+                                  <button onClick={() => handleDelete(msg._id)} title="Delete Message" className="text-gray-600 hover:text-red-600 transition-colors">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                             </td>
+                          </tr>
+                        ))
+                      )}
                    </tbody>
                 </table>
               </div>
               {/* Pagination */}
-              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-[#FAFAFA]">
-                 <span className="text-xs font-bold text-gray-500">Showing 1 to 5 of 1284 messages</span>
-                 <div className="flex items-center space-x-1.5">
-                    <button className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded text-gray-500 bg-white hover:bg-gray-50 transition-colors">
-                      <svg className="w-4 h-4" transform="rotate(180)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                    <button className="w-8 h-8 flex items-center justify-center border border-[#A7412A] rounded text-white bg-[#A7412A] font-bold text-sm shadow-sm">1</button>
-                    <button className="w-8 h-8 flex items-center justify-center rounded text-gray-700 bg-transparent hover:bg-gray-100 transition-colors font-bold text-sm">2</button>
-                    <button className="w-8 h-8 flex items-center justify-center rounded text-gray-700 bg-transparent hover:bg-gray-100 transition-colors font-bold text-sm">3</button>
-                    <span className="text-gray-400 font-bold px-2">...</span>
-                    <button className="w-8 h-8 flex items-center justify-center rounded text-gray-700 bg-transparent hover:bg-gray-100 transition-colors font-bold text-sm">257</button>
-                    <button className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                 </div>
-              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-[#FAFAFA]">
+                   <span className="text-xs font-bold text-gray-500">
+                     Showing {startIndex + 1} to {Math.min(startIndex + messagesPerPage, filteredMessages.length)} of {filteredMessages.length} messages
+                   </span>
+                   <div className="flex items-center space-x-3">
+                      <button 
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded text-gray-500 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <svg className="w-4 h-4" transform="rotate(180)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                      
+                      <span className="text-sm font-bold text-gray-700">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      
+                      <button 
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                   </div>
+                </div>
+              )}
            </div>
 
            {/* Bottom Details */}

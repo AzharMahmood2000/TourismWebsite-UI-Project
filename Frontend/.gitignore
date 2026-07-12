@@ -24,3 +24,7 @@ Thumbs.db
 
 # ── Vite / build cache ────────────────────────────
 .vite/
+
+# ── Temporary Logs ──────────────────────────────────
+build_output.txt
+build_output_utf8.txt

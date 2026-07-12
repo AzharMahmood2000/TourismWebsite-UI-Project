@@ -6,7 +6,6 @@ export default function ContactPage() {
 	const [formData, setFormData] = useState({
 		name: '',
 		email: '',
-		category: '',
 		message: '',
 		preferredTravelCategory: '',
 		customCategory: '',
@@ -44,7 +43,8 @@ export default function ContactPage() {
 				body: JSON.stringify({
 					name: formData.name,
 					email: formData.email,
-					subject: formData.category,
+					phone: "",
+					subject: "Website Inquiry",
 					message: formData.message,
 					preferredTravelCategory,
 				}),
@@ -53,7 +53,7 @@ export default function ContactPage() {
 			setIsSubmitted(true);
 			setTimeout(() => {
 				setIsSubmitted(false);
-				setFormData({ name: '', email: '', category: '', message: '', preferredTravelCategory: '', customCategory: '' });
+				setFormData({ name: '', email: '', message: '', preferredTravelCategory: '', customCategory: '' });
 			}, 3500);
 		} catch (err) {
 			setSubmitError("Failed to send message. Please try again.");

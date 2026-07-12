@@ -3,12 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import AdminSidebar from '../Components/AdminSidebar';
 import AdminTopbar from '../Components/AdminTopbar';
 import API_BASE_URL from '../api/api';
+import AlertMessage from '../Components/AlertMessage';
+import EmptyState from '../Components/EmptyState';
+import LoadingState from '../Components/LoadingState';
 
 const ManageDestination = () => {
   const navigate = useNavigate();
   const [destinations, setDestinations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [actionMessage, setActionMessage] = useState(null);
   
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
@@ -162,7 +166,7 @@ const ManageDestination = () => {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this destination?")) return;
     const token = getAuthToken();
-    if (!token) return alert('No auth token found, please login');
+    if (!token) return setActionMessage({ type: 'error', title: 'Auth Error', text: 'No auth token found, please login' });
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/destinations/${id}`, {
@@ -172,8 +176,9 @@ const ManageDestination = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to delete destination');
       fetchDestinations();
+      setActionMessage({ type: 'success', title: 'Location Deleted', text: 'Destination successfully deleted.' });
     } catch (err) {
-      alert(err.message);
+      setActionMessage({ type: 'error', title: 'Deletion Failed', text: err.message });
     }
   };
 
@@ -183,12 +188,12 @@ const ManageDestination = () => {
     if (!isCurrentlyPopular) {
       const popularCount = destinations.filter(d => d.isPopular === true).length;
       if (popularCount >= 5) {
-        return alert("Only 5 popular destinations are allowed.");
+        return setActionMessage({ type: 'warning', title: 'Limit Reached', text: 'Only 5 popular destinations are allowed.' });
       }
     }
 
     const token = getAuthToken();
-    if (!token) return alert('No auth token found, please login');
+    if (!token) return setActionMessage({ type: 'error', title: 'Auth Error', text: 'No auth token found, please login' });
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/destinations/${dest._id}`, {
@@ -202,15 +207,16 @@ const ManageDestination = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to update popular status');
       fetchDestinations();
+      setActionMessage({ type: 'success', title: 'Status Updated', text: 'Popular status updated.' });
     } catch (err) {
-      alert(err.message);
+      setActionMessage({ type: 'error', title: 'Update Failed', text: err.message });
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = getAuthToken();
-    if (!token) return alert('No auth token found, please login');
+    if (!token) return setActionMessage({ type: 'error', title: 'Auth Error', text: 'No auth token found, please login' });
 
     try {
       setAdding(true);
@@ -254,6 +260,7 @@ const ManageDestination = () => {
       setEditingId(null);
       setFormData({ title: '', slug: '', category: '', region: '', location: '', mapUrl: '', description: '', image: null });
       fetchDestinations();
+      setActionMessage({ type: 'success', title: 'Destination Saved', text: 'Location saved successfully.' });
     } catch (err) {
       alert(err.message);
     } finally {
@@ -284,6 +291,9 @@ const ManageDestination = () => {
 
         {/* Page Content */}
         <div className="px-10 py-8 bg-white min-h-[calc(100vh-73px)]">
+           {actionMessage && (
+             <div className="mb-6"><AlertMessage type={actionMessage.type} title={actionMessage.title} message={actionMessage.text} onClose={() => setActionMessage(null)} /></div>
+           )}
            <div className="flex justify-between items-start mb-8">
              <div>
                 <p className="text-[10px] font-bold text-[#A7412A] uppercase tracking-wider mb-2">Admin Dashboard</p>
@@ -348,11 +358,11 @@ const ManageDestination = () => {
                    </thead>
                    <tbody className="divide-y divide-gray-100">
                       {loading ? (
-                        <tr><td colSpan="5" className="text-center py-10">Loading destinations...</td></tr>
+                        <tr><td colSpan="5" className="p-0"><LoadingState message="Loading destinations..." /></td></tr>
                       ) : error ? (
-                        <tr><td colSpan="5" className="text-center py-10 text-red-500">{error}</td></tr>
+                        <tr><td colSpan="5" className="p-4"><AlertMessage type="error" title="Failed to load locations" message={error} onClose={() => setError(null)} actionText="Try Again" onAction={fetchDestinations} /></td></tr>
                       ) : paginatedDestinations.length === 0 ? (
-                        <tr><td colSpan="5" className="text-center py-10">No destinations found on this page.</td></tr>
+                        <tr><td colSpan="5" className="p-6"><EmptyState title="No destinations found" message="No matching destinations are available on this page." /></td></tr>
                       ) : paginatedDestinations.map((dest, idx) => (
                         <tr key={dest._id || idx} className="hover:bg-gray-50 transition-colors group">
                            <td className="px-6 py-4">

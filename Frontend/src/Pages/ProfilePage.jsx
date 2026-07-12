@@ -7,6 +7,48 @@ import { useAuth } from '../context/AuthContext';
 import API_BASE_URL from '../api/api';
 
 /* ─────────────────────────────────────────
+   Inline fallback components (no imports needed)
+───────────────────────────────────────── */
+function InlineLoadingState({ message = 'Loading...' }) {
+  return (
+    <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-500">
+      <svg className="animate-spin w-5 h-5 text-[#d66847]" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      </svg>
+      <span>{message}</span>
+    </div>
+  );
+}
+
+function InlineAlertMessage({ type = 'error', title, message, actionText, onClose }) {
+  const isError = type === 'error';
+  return (
+    <div className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
+      isError ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-700'
+    }`}>
+      {title && <p className="font-bold mb-0.5">{title}</p>}
+      {message && <p className="font-normal text-xs opacity-80">{message}</p>}
+      {actionText && onClose && (
+        <button onClick={onClose} className="mt-2 text-xs underline hover:no-underline">{actionText}</button>
+      )}
+    </div>
+  );
+}
+
+function InlineEmptyState({ title, message }) {
+  return (
+    <div className="text-center py-8">
+      <svg className="mx-auto w-10 h-10 text-slate-300 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+        <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      {title && <p className="text-sm font-bold text-slate-500">{title}</p>}
+      {message && <p className="text-xs text-slate-400 mt-1">{message}</p>}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────
    Default Avatar SVG
 ───────────────────────────────────────── */
 function DefaultAvatar({ size = 120 }) {
@@ -325,14 +367,15 @@ export default function ProfilePage() {
 
   const getStoredUser = () => {
     try {
-      return JSON.parse(localStorage.getItem('userInfo'));
+      return JSON.parse(localStorage.getItem('userInfo') || '{}');
     } catch {
-      return null;
+      return {};
     }
   };
 
   const getToken = () => {
-    return getStoredUser()?.token || null;
+    const stored = getStoredUser();
+    return stored?.token || null;
   };
 
   useEffect(() => {
@@ -530,6 +573,70 @@ export default function ProfilePage() {
 
   if (!isAuthenticated) {
     return <UnauthenticatedCard />;
+  }
+
+  /* Guard: token missing after auth check */
+  const currentToken = getToken();
+  if (!currentToken) {
+    return (
+      <div className="min-h-screen bg-[#fffaf8] font-sans">
+        <Navbar />
+        <main className="mx-auto max-w-xl px-4 py-24 text-center">
+          <div className="rounded-2xl bg-white border border-slate-200 p-10 shadow-sm">
+            <svg className="mx-auto w-12 h-12 text-[#d66847] mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            <h2 className="text-xl font-extrabold text-slate-900 mb-2">Session Expired</h2>
+            <p className="text-sm text-slate-500 mb-6">Please login to view your profile.</p>
+            <button
+              onClick={() => navigate('/login', { state: { from: '/profile' } })}
+              className="rounded-xl px-8 py-3 text-sm font-bold uppercase tracking-widest text-white transition-all hover:opacity-90 active:scale-[0.97]"
+              style={{ background: 'linear-gradient(135deg,#d66847 0%,#b5522f 100%)' }}
+            >
+              Go to Login
+            </button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  /* Guard: profile still loading */
+  if (loadingProfile && !user) {
+    return (
+      <div className="min-h-screen bg-[#fffaf8] font-sans">
+        <Navbar />
+        <main className="mx-auto max-w-xl px-4 py-24 text-center">
+          <InlineLoadingState message="Loading profile..." />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  /* Guard: profile fetch failed before any user data */
+  if (profileError && !user) {
+    return (
+      <div className="min-h-screen bg-[#fffaf8] font-sans">
+        <Navbar />
+        <main className="mx-auto max-w-xl px-4 py-24 text-center">
+          <div className="rounded-2xl bg-white border border-red-200 p-10 shadow-sm">
+            <h2 className="text-xl font-extrabold text-slate-900 mb-2">Failed to load profile</h2>
+            <p className="text-sm text-red-500 mb-6">{profileError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-xl px-8 py-3 text-sm font-bold uppercase tracking-widest text-white transition-all hover:opacity-90 active:scale-[0.97]"
+              style={{ background: 'linear-gradient(135deg,#d66847 0%,#b5522f 100%)' }}
+            >
+              Retry
+            </button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
   return (
@@ -897,11 +1004,11 @@ export default function ProfilePage() {
 
               <div className="space-y-4">
                 {bookingsLoading ? (
-                  <p className="text-sm font-semibold text-slate-500 py-4 text-center">Loading your bookings...</p>
+                  <div className="py-4"><InlineLoadingState message="Loading your bookings..." /></div>
                 ) : bookingsError ? (
-                  <p className="text-sm font-semibold text-red-500 py-4 text-center">{bookingsError}</p>
+                  <div className="py-2"><InlineAlertMessage type="error" title="Failed to load bookings" message={bookingsError} actionText="Retry" onClose={() => setBookingsError('')} /></div>
                 ) : bookings.length === 0 ? (
-                  <p className="text-sm font-semibold text-slate-500 py-4 text-center">No bookings found.</p>
+                  <div className="py-2"><InlineEmptyState title="No bookings found" message="Start exploring destinations to schedule your first travel adventure." /></div>
                 ) : (
                   bookings.map((bk) => {
                     const bookingId = bk._id;
@@ -933,7 +1040,7 @@ export default function ProfilePage() {
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                              #{bookingId.slice(-8)}
+                              #{bookingId?.slice(-8) || 'N/A'}
                             </span>
 
                             <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusClass}`}>

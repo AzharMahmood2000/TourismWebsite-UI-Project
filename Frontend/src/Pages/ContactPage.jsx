@@ -7,10 +7,13 @@ export default function ContactPage() {
 		name: '',
 		email: '',
 		category: '',
-		message: ''
+		message: '',
+		preferredTravelCategory: '',
+		customCategory: '',
 	});
 	const [isSubmitted, setIsSubmitted] = useState(false);
 	const [submitError, setSubmitError] = useState("");
+	const [categoryError, setCategoryError] = useState("");
 
 	useEffect(() => {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -19,6 +22,21 @@ export default function ContactPage() {
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setSubmitError("");
+		setCategoryError("");
+
+		// Determine preferred travel category value
+		let preferredTravelCategory = formData.preferredTravelCategory;
+		if (preferredTravelCategory === "__other__") {
+			preferredTravelCategory = formData.customCategory.trim();
+			if (!preferredTravelCategory) {
+				setCategoryError("Please enter your preferred travel category.");
+				return;
+			}
+		} else if (!preferredTravelCategory) {
+			setCategoryError("Please select or enter your preferred travel category.");
+			return;
+		}
+
 		try {
 			const res = await fetch("http://localhost:5000/api/contact", {
 				method: "POST",
@@ -28,13 +46,14 @@ export default function ContactPage() {
 					email: formData.email,
 					subject: formData.category,
 					message: formData.message,
+					preferredTravelCategory,
 				}),
 			});
 			if (!res.ok) throw new Error("Failed");
 			setIsSubmitted(true);
 			setTimeout(() => {
 				setIsSubmitted(false);
-				setFormData({ name: '', email: '', category: '', message: '' });
+				setFormData({ name: '', email: '', category: '', message: '', preferredTravelCategory: '', customCategory: '' });
 			}, 3500);
 		} catch (err) {
 			setSubmitError("Failed to send message. Please try again.");
@@ -207,23 +226,55 @@ export default function ContactPage() {
 										</div>
 									</div>
 
-									{/* Category Dropdown */}
+									{/* Preferred Travel Category Dropdown */}
 									<div>
 										<label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
 											Preferred Travel Category
 										</label>
 										<select
-											value={formData.category}
-											onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-											className="w-full border border-slate-200 rounded-sm px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white focus:border-[#d66847] focus:outline-none transition-colors"
+											id="contact-preferred-travel-category"
+											value={formData.preferredTravelCategory}
+											onChange={(e) => {
+												setFormData({ ...formData, preferredTravelCategory: e.target.value, customCategory: '' });
+												setCategoryError("");
+											}}
+											className={`w-full border rounded-sm px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white focus:border-[#d66847] focus:outline-none transition-colors ${
+												categoryError ? 'border-red-400' : 'border-slate-200'
+											}`}
 										>
-											<option value="" disabled>Select a category</option>
-											<option value="Beaches">Beaches & Coastal Resorts</option>
-											<option value="Mountains">Mountains & Hill Country Trails</option>
-											<option value="Historical & Cultural">Historical & Cultural Heritage</option>
-											<option value="Wildlife">Wildlife & Safari Wilderness</option>
-											<option value="Expedition">Custom Mountain Expedition</option>
+											<option value="">Select travel category</option>
+											<option value="Beaches">Beaches</option>
+											<option value="Mountains">Mountains</option>
+											<option value="Historical & Cultural">Historical & Cultural</option>
+											<option value="Adventure">Adventure</option>
+											<option value="Family Tour">Family Tour</option>
+											<option value="Honeymoon">Honeymoon</option>
+											<option value="Religious Tour">Religious Tour</option>
+											<option value="__other__">Other</option>
 										</select>
+
+										{/* Custom category input — shown when "Other" is selected */}
+										{formData.preferredTravelCategory === '__other__' && (
+											<input
+												id="contact-custom-category"
+												type="text"
+												value={formData.customCategory}
+												onChange={(e) => {
+													setFormData({ ...formData, customCategory: e.target.value });
+													if (categoryError) setCategoryError("");
+												}}
+												placeholder="Enter your preferred travel category"
+												className={`w-full mt-2 border rounded-sm px-4 py-2.5 text-xs font-semibold text-slate-700 placeholder-slate-300 focus:border-[#d66847] focus:outline-none transition-colors bg-[#fffcfb] ${
+													categoryError ? 'border-red-400' : 'border-slate-200'
+												}`}
+											/>
+										)}
+
+										{categoryError && (
+											<p className="mt-1.5 text-[10px] font-bold text-red-500">
+												{categoryError}
+											</p>
+										)}
 									</div>
 
 									{/* Textarea message box */}

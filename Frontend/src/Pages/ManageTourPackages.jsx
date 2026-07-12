@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import AdminSidebar from '../Components/AdminSidebar';
 import AdminTopbar from '../Components/AdminTopbar';
 import API_BASE_URL from '../api/api';
+import AlertMessage from '../Components/AlertMessage';
+import EmptyState from '../Components/EmptyState';
+import LoadingState from '../Components/LoadingState';
 
 const normalizeCategory = (value) => {
   return value
@@ -15,6 +18,7 @@ const ManageTourPackages = () => {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [actionMessage, setActionMessage] = useState(null);
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -155,6 +159,7 @@ const ManageTourPackages = () => {
       
       setIsModalOpen(false);
       fetchPackages();
+      setActionMessage({ type: 'success', title: 'Package Saved', text: 'The tour package was successfully updated.' });
     } catch (err) {
       alert(err.message);
     } finally {
@@ -172,8 +177,9 @@ const ManageTourPackages = () => {
       });
       if (!res.ok) throw new Error("Failed to delete package");
       fetchPackages();
+      setActionMessage({ type: 'success', title: 'Package Deleted', text: 'The tour package was removed.' });
     } catch (err) {
-      alert(err.message);
+      setActionMessage({ type: 'error', title: 'Deletion Failed', text: err.message });
     }
   };
 
@@ -230,6 +236,9 @@ const ManageTourPackages = () => {
         <AdminTopbar />
         
         <div className="flex-1 overflow-y-auto p-8">
+          {actionMessage && (
+            <div className="mb-6"><AlertMessage type={actionMessage.type} title={actionMessage.title} message={actionMessage.text} onClose={() => setActionMessage(null)} /></div>
+          )}
           <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-extrabold text-gray-900">Manage Tour Packages</h2>
@@ -255,11 +264,11 @@ const ManageTourPackages = () => {
                </thead>
                <tbody className="divide-y divide-gray-200">
                   {loading ? (
-                    <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">Loading packages...</td></tr>
+                    <tr><td colSpan="6" className="p-0"><LoadingState message="Loading packages..." /></td></tr>
                   ) : error ? (
-                    <tr><td colSpan="6" className="px-6 py-8 text-center text-red-500 font-semibold">{error}</td></tr>
+                    <tr><td colSpan="6" className="p-4"><AlertMessage type="error" title="Failed to load packages" message={error} onClose={() => setError(null)} actionText="Try Again" onAction={fetchPackages} /></td></tr>
                   ) : packages.length === 0 ? (
-                    <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">No packages found.</td></tr>
+                    <tr><td colSpan="6" className="p-6"><EmptyState title="No packages found" message="Add exciting new tour packages for your guests to book." /></td></tr>
                   ) : packages.map(pkg => (
                     <tr key={pkg._id} className="hover:bg-gray-50 transition-colors">
                        <td className="px-6 py-4">

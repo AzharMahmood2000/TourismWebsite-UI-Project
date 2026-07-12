@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AdminSidebar from '../Components/AdminSidebar';
 import AdminTopbar from '../Components/AdminTopbar';
+import AlertMessage from '../Components/AlertMessage';
+import EmptyState from '../Components/EmptyState';
+import LoadingState from '../Components/LoadingState';
 
 const ManageMessages = () => {
   const [messages, setMessages] = useState([]);
@@ -99,6 +102,9 @@ const ManageMessages = () => {
             <div className="text-sm text-gray-500 mb-6">
               <p><strong>From:</strong> {selectedMessage.name} ({selectedMessage.email})</p>
               {selectedMessage.phone && <p><strong>Phone:</strong> {selectedMessage.phone}</p>}
+              {selectedMessage.preferredTravelCategory && (
+                <p><strong>Preferred Travel Category:</strong> <span className="text-[#A7412A] font-semibold">{selectedMessage.preferredTravelCategory}</span></p>
+              )}
               <p><strong>Date:</strong> {new Date(selectedMessage.createdAt).toLocaleString()}</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap text-gray-800 text-sm border border-gray-100">
@@ -201,17 +207,11 @@ const ManageMessages = () => {
                    </thead>
                    <tbody className="divide-y divide-gray-200">
                       {loading ? (
-                        <tr>
-                          <td colSpan="5" className="px-6 py-12 text-center text-gray-500 font-bold">Loading messages...</td>
-                        </tr>
+                        <tr><td colSpan="5" className="p-0"><LoadingState message="Loading messages..." /></td></tr>
                       ) : error ? (
-                        <tr>
-                          <td colSpan="5" className="px-6 py-12 text-center text-red-500 font-bold">{error}</td>
-                        </tr>
+                        <tr><td colSpan="5" className="p-4"><AlertMessage type="error" title="Failed to load messages" message={error} onClose={() => setError("")} actionText="Try Again" onAction={fetchMessages} /></td></tr>
                       ) : filteredMessages.length === 0 ? (
-                        <tr>
-                          <td colSpan="5" className="px-6 py-12 text-center text-gray-500 font-bold">No messages found.</td>
-                        </tr>
+                        <tr><td colSpan="5" className="p-6"><EmptyState title="No messages found" message="You have no messages matching your criteria." /></td></tr>
                       ) : (
                         currentMessages.map((msg) => (
                           <tr key={msg._id} className="hover:bg-gray-50 transition-colors">

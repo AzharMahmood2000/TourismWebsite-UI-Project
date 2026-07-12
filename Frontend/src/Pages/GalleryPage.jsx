@@ -1,141 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import Navbar from '../Components/Navbar';
 import Footer from '../Components/Footer';
 import GalleryHero from '../Components/GalleryHero';
-
-/* ═══════════════════════════════════════════════════════
-   Full Destination Dataset — with URL-encoded paths
-   ═══════════════════════════════════════════════════════ */
-const allGalleryDestinations = [
-	/* ── SIGIRIYA ── */
-	{
-		id: 'sigiriya-main',
-		destinationId: 'sigiriya',
-		title: 'Sigiriya Gardens (View 2)',
-		category: 'Ancient',
-		region: 'CENTRAL PROVINCE',
-		image: '/assets/images/sigiriya.jpg',
-		description: 'The lush terraced water gardens at the base of the rock, showing ancient hydraulic designs.',
-		longDetails: 'Sigiriya is an ancient rock fortress and UNESCO World Heritage Site. The 200-metre high rock was converted into a royal palace by King Kashyapa in the 5th century. It features beautiful frescoes, a mirror wall, sophisticated water gardens, and the iconic Lion Gate.',
-	},
-	{
-		id: 'sigiriya-day',
-		destinationId: 'sigiriya',
-		title: 'Lion Rock Climb (View 3)',
-		category: 'Ancient',
-		region: 'CENTRAL PROVINCE',
-		image: '/assets/images/dambulla_cave.webp',
-		description: 'A beautiful perspective of the ascending staircase path to the summit palace ruins.',
-		longDetails: 'The daylight reveals the detailed layout of the ancient landscaped water gardens at the base of the rock. These symmetrical pools and fountain structures are among the oldest in the world, demonstrating advanced hydraulic engineering from over 1,500 years ago.',
-	},
-	{
-		id: 'sigiriya-night',
-		destinationId: 'sigiriya',
-		title: 'Summit Outlook (View 4)',
-		category: 'Ancient',
-		region: 'CENTRAL PROVINCE',
-		image: '/assets/images/Sigiriya/4.jpg',
-		description: 'A stunning high-altitude vista looking over the surrounding tropical valley forests.',
-		longDetails: 'Under the starlight, the silhouette of the Lion Rock is a mystical sight. In ancient times, the rock was crowned with a multi-story palace that would glow with torchlight, standing as a brilliant beacon over the dark forests below.',
-	},
-
-	/* ── AMBULUWEWA ── */
-	{
-		id: 'ambuluwewa-main',
-		destinationId: 'ambuluwewa',
-		title: 'Ambuluwewa Spire (View 2)',
-		category: 'Educational',
-		region: 'HILL COUNTRY',
-		image: '/assets/images/Ambuluwewa/2.jpg',
-		description: 'The spiralling, snow-white spire of Ambuluwewa Tower reaching into the highland clouds.',
-		longDetails: 'Ambuluwewa Tower is a unique biodiversity complex and tourist harbor located in Gampola, Sri Lanka. The tower rises dramatically above the surrounding hills, offering an adventurous climb with panoramic 360-degree views of the lush green mountain ranges.',
-	},
-	{
-		id: 'ambuluwewa-day',
-		destinationId: 'ambuluwewa',
-		title: 'Ascending Walkway (View 3)',
-		category: 'Educational',
-		region: 'HILL COUNTRY',
-		image: '/assets/images/Ambuluwewa/3.jpg',
-		description: 'A breathtaking and narrow spiralling climb providing thrilling panoramic mountain views.',
-		longDetails: 'Ambuluwewa is known for its narrow, winding staircase that clings to the exterior of the tower, providing a heart-racing experience for climbers as they get closer to the peak.',
-	},
-	{
-		id: 'ambuluwewa-night',
-		destinationId: 'ambuluwewa',
-		title: 'Biodiversity Peak (View 4)',
-		category: 'Educational',
-		region: 'HILL COUNTRY',
-		image: '/assets/images/Ambuluwewa/4.jpg',
-		description: 'The surrounding multi-religious sanctuary and botanical gardens at the summit base.',
-		longDetails: 'The Ambuluwewa peak is a unique multi-faith sanctuary featuring a temple, a mosque, a church, and a kovil, promoting unity and peace alongside nature and environmental education.',
-	},
-
-	/* ── YALA ── */
-	{
-		id: 'yala-leopard',
-		destinationId: 'yala',
-		title: 'Yala Wildlife (View 2)',
-		category: 'Wildlife',
-		region: 'SOUTHERN COAST',
-		image: '/assets/images/yala.jpg',
-		description: 'A close encounter with a resting leopard in the dense scrub jungle of Yala National Sanctuary.',
-		longDetails: 'Yala National Park has one of the highest leopard densities in the world. Visitors on guided jeep safaris have a high chance of spotting these majestic big cats relaxing on rock outcrops or stalking prey through the dry scrub forests.',
-	},
-	{
-		id: 'yala-coast',
-		destinationId: 'yala',
-		title: 'Elephant Crossing (View 3)',
-		category: 'Wildlife',
-		region: 'SOUTHERN COAST',
-		image: '/assets/images/yala_gallery.jpg',
-		description: 'Lush wilderness meeting the brackish lagoons and Indian Ocean beaches of the southern coast.',
-		longDetails: 'Yala borders the Indian Ocean, providing a unique landscape where wild elephants and leopards can occasionally be seen walking on the beaches. The coastal lagoons host migrating birds, mugger crocodiles, and herds of wild water buffalo.',
-	},
-	{
-		id: 'yala-safari',
-		destinationId: 'yala',
-		title: 'Lagoon Sanctuary (View 4)',
-		category: 'Wildlife',
-		region: 'SOUTHERN COAST',
-		image: '/assets/images/pinnawala.jpg',
-		description: 'A beautiful perspective of the brackish lakes and coastal shrublands inside the national park.',
-		longDetails: 'Guided jeep safaris run daily at sunrise and dusk, offering travelers close-up experiences with herds of Asian elephants, wild water buffaloes, spotted deer, and hundreds of tropical bird species.',
-	},
-
-	/* ── KALKUDAH ── */
-	{
-		id: 'kalkudah-beach',
-		destinationId: 'kalkudah',
-		title: 'Kalkudah Beach (View 2)',
-		category: 'Beaches',
-		region: 'EASTERN SHORE',
-		image: '/assets/images/kalkudah.jpg',
-		description: 'Pristine, untouched white sand beaches offering shallow turquoise waters for tropical relaxation.',
-		longDetails: 'Kalkudah Beach is a secluded paradise with calm and shallow waters. It is protected by offshore reefs, making it an incredibly safe and peaceful location for swimming and sunbathing away from the busy tourist crowds.',
-	},
-	{
-		id: 'kalkudah-trinco',
-		destinationId: 'kalkudah',
-		title: 'Trincomalee Coastline (View 3)',
-		category: 'Beaches',
-		region: 'EASTERN SHORE',
-		image: '/assets/images/trincomalee.jpg',
-		description: 'A beautiful perspective of the golden shores and crystal-clear waters in nearby Trincomalee.',
-		longDetails: 'The eastern shores of Trincomalee feature pristine beaches like Nilaveli and Uppuveli. Known for shallow waters and crystal clear visibility, it is a world-class destination for snorkeling and dolphin watching.',
-	},
-	{
-		id: 'kalkudah-resort',
-		destinationId: 'kalkudah',
-		title: 'Passekudah Bay (View 4)',
-		category: 'Beaches',
-		region: 'EASTERN SHORE',
-		image: '/assets/images/mirissa.jpg',
-		description: 'Clear blue waters with shallow sandy beds extending hundreds of metres from the shore.',
-		longDetails: 'The shallow and reef-protected waters of Passekudah and Kalkudah allow visitors to wade hundreds of metres into the warm Indian Ocean, enjoying calm and flat conditions that feel like a giant natural swimming pool.',
-	},
-];
+import API_BASE_URL from '../api/api';
 
 /* ═══════════════════════════════════════════════════════
    Places Configuration
@@ -147,17 +15,16 @@ const GALLERY_PLACES = ['All', 'Sigiriya', 'Ambuluwewa', 'Yala', 'Kalkudah'];
    — All      → Featured cover from each place
    — Specific → Related images from that place ID
    ═══════════════════════════════════════════════════════ */
-function resolveRecommendations(place) {
+function resolveRecommendations(place, allItems) {
 	if (!place || place === 'All') {
-		return [
-			allGalleryDestinations.find((d) => d.id === 'sigiriya-main'),
-			allGalleryDestinations.find((d) => d.id === 'ambuluwewa-main'),
-			allGalleryDestinations.find((d) => d.id === 'yala-leopard'),
-			allGalleryDestinations.find((d) => d.id === 'kalkudah-beach'),
-		].filter(Boolean);
+		return allItems.slice(0, 4);
 	}
-	return allGalleryDestinations.filter(
-		(d) => d.destinationId.toLowerCase() === place.toLowerCase()
+	return allItems.filter(
+		(d) => 
+			(d.title && d.title.toLowerCase().includes(place.toLowerCase())) || 
+			(d.badge && d.badge.toLowerCase().includes(place.toLowerCase())) ||
+			(d.category && d.category.toLowerCase().includes(place.toLowerCase())) || 
+			(d.region && d.region.toLowerCase().includes(place.toLowerCase()))
 	);
 }
 
@@ -185,7 +52,7 @@ function EscapeCard({ item, onDetail, featured = false }) {
 			/>
 			<div className={`absolute bottom-0 left-0 right-0 ${featured ? 'p-8' : 'p-6'} text-white z-10`}>
 				<span className="text-[10px] font-bold tracking-widest text-[#d66847] uppercase">
-					{item.region}
+					{item.badge}
 				</span>
 				<div className={`flex justify-between ${featured ? 'items-end' : 'items-center'} gap-4 mt-2`}>
 					<h3
@@ -269,17 +136,66 @@ function CuratedGrid({ items, onDetail }) {
    ═══════════════════════════════════════════════════════ */
 export default function GalleryPage() {
 	const [searchParams, setSearchParams]                   = useSearchParams();
+	const navigate                                          = useNavigate();
 	const [activeHeroDestination, setActiveHeroDestination] = useState(null);
 	const [subscribed, setSubscribed]                       = useState(false);
 	const [selectedDetail, setSelectedDetail]               = useState(null);
 	const [isModalOpen, setIsModalOpen]                     = useState(false);
 	const [isVisible, setIsVisible]                         = useState(true);
 	const [syncFlash, setSyncFlash]                         = useState(false);
+	
+	const [curatedEscapes, setCuratedEscapes] = useState([]);
+	const [curatedLoading, setCuratedLoading] = useState(false);
+	const [curatedError, setCuratedError] = useState("");
+
 	const fadeTimer = useRef(null);
 	const galleryRef = useRef(null);
 
+	const getImageSrc = (image) => {
+		if (!image || typeof image !== "string") return "/fallback-image.jpg";
+		if (image.startsWith("http") || image.startsWith("data:")) return image;
+		return `${API_BASE_URL}${image.startsWith("/") ? image : `/${image}`}`;
+	};
+
 	useEffect(() => {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
+
+		const fetchGalleryData = async () => {
+			try {
+				setCuratedLoading(true);
+				const res = await fetch(`${API_BASE_URL}/api/gallery/curated-escapes`);
+				if (!res.ok) throw new Error("Failed to load curated escapes.");
+				const data = await res.json();
+				
+				console.log("Curated Escapes API response:", data);
+				
+				let escapesArray = [];
+				if (Array.isArray(data)) {
+					escapesArray = data;
+				} else if (data.curatedEscapes || data.data) {
+					escapesArray = data.curatedEscapes || data.data || [];
+				}
+				
+				const mappedData = escapesArray.map(item => ({
+					...item,
+					id: item._id,
+					title: item.title || item.sourceId?.title || item.sourceId?.name || "Untitled Escape",
+					description: item.description || item.sourceId?.description || item.sourceId?.shortDescription || "",
+					badge: item.badge || item.sourceId?.category || "Featured",
+					image: getImageSrc(item.image || item.sourceId?.image || item.sourceId?.coverImage || ""),
+					linkSourceId: item.sourceId?._id || item.sourceId || ""
+				}));
+				
+				setCuratedEscapes(mappedData);
+				console.log("Curated Escapes state:", mappedData);
+			} catch (error) {
+				console.error("Error fetching gallery items", error);
+				setCuratedError("Error fetching gallery items");
+			} finally {
+				setCuratedLoading(false);
+			}
+		};
+		fetchGalleryData();
 	}, []);
 
 	/* ── Resolve active place from URL parameters ── */
@@ -288,7 +204,7 @@ export default function GalleryPage() {
 		(p) => p.toLowerCase() === placeQuery.toLowerCase()
 	) || 'All';
 
-	const recommendations = resolveRecommendations(activePlace);
+	const recommendations = resolveRecommendations(activePlace, curatedEscapes);
 
 	/* ── Fade transition on filter change ── */
 	useEffect(() => {
@@ -391,7 +307,13 @@ export default function GalleryPage() {
 						transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
 					}}
 				>
-					<CuratedGrid items={recommendations} onDetail={triggerModal} />
+					{curatedEscapes.length === 0 ? (
+						<div className="py-24 text-center">
+							<p className="text-lg font-medium text-slate-400">No curated escapes available yet.</p>
+						</div>
+					) : (
+						<CuratedGrid items={recommendations} onDetail={triggerModal} />
+					)}
 				</div>
 			</section>
 
@@ -416,7 +338,7 @@ export default function GalleryPage() {
 							/>
 							<div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 							<span className="absolute left-6 bottom-6 rounded-full bg-[#d66847] px-4 py-1.5 text-[9px] font-extrabold uppercase tracking-widest text-white">
-								{selectedDetail.region}
+								{selectedDetail.badge}
 							</span>
 						</div>
 
@@ -453,15 +375,31 @@ export default function GalleryPage() {
 
 							<div className="mt-8 border-t border-slate-100 pt-6 flex items-center justify-between gap-4">
 								<p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-									{selectedDetail.category} · Featured
+									{selectedDetail.badge} · Featured
 								</p>
-								<button
-									type="button"
-									onClick={closeModal}
-									className="rounded-full bg-[#d66847] px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white transition hover:bg-[#c55b3b]"
-								>
-									Explore Expedition
-								</button>
+								{!selectedDetail.linkSourceId ? (
+									<button
+										type="button"
+										disabled
+										className="rounded-full bg-slate-300 px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 cursor-not-allowed"
+									>
+										Booking details unavailable
+									</button>
+								) : (
+									<button
+										type="button"
+										onClick={() => {
+											if (selectedDetail.sourceType === 'destination') {
+												navigate(`/booking?type=single&destinationId=${selectedDetail.linkSourceId}`);
+											} else if (selectedDetail.sourceType === 'package') {
+												navigate(`/booking?type=package&packageId=${selectedDetail.linkSourceId}`);
+											}
+										}}
+										className="rounded-full bg-[#d66847] px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white transition hover:bg-[#c55b3b]"
+									>
+										Book Experience
+									</button>
+								)}
 							</div>
 						</div>
 					</div>

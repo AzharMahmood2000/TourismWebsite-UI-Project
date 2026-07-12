@@ -3,7 +3,7 @@ const Contact = require("../models/contactModel");
 // POST /api/contact
 const createContactMessage = async (req, res) => {
   try {
-    const { name, email, phone, subject, message } = req.body;
+    const { name, email, phone, subject, message, preferredTravelCategory } = req.body;
 
     if (!name || !email || !message) {
       return res.status(400).json({
@@ -17,6 +17,7 @@ const createContactMessage = async (req, res) => {
       phone,
       subject,
       message,
+      preferredTravelCategory,
     });
 
     res.status(201).json({

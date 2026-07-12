@@ -1,37 +1,32 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import API_BASE_URL from '../api/api';
 
 export default function GalleryHero({ onDestinationChange }) {
-	const navigate = useNavigate();
-	const [searchParams] = useSearchParams();
 	const [isNightView, setIsNightView] = useState(false);
-	const [destinations, setDestinations] = useState([]);
+	const [heroQueue, setHeroQueue] = useState([]);
 	const [loading, setLoading] = useState(true);
 
-	const placeQuery = searchParams.get('place') || '';
-	const activeDestination = destinations.length > 0 
-		? (destinations.find((d) => d.slug === placeQuery.toLowerCase() || d._id === placeQuery) || destinations[0])
-		: null;
-
 	const getImageSrc = (img) => {
-		if (!img || typeof img !== 'string') return '';
+		if (!img || typeof img !== 'string') return '/fallback-image.jpg';
 		if (img.startsWith('http') || img.startsWith('data:')) return img;
 		return `${API_BASE_URL}${img.startsWith('/') ? img : `/${img}`}`;
 	};
 
 	useEffect(() => {
-		const fetchDestinations = async () => {
+		const fetchHeroSlides = async () => {
 			try {
 				setLoading(true);
-				const res = await fetch(`${API_BASE_URL}/api/destinations`);
+				const res = await fetch(`${API_BASE_URL}/api/gallery/hero-slides`);
 				const data = await res.json();
-				if (res.ok) setDestinations(data.filter((d) => d.isActive !== false));
+				if (res.ok && data.length > 0) {
+					// Backend sorts by displayOrder natively, but ensure array exists
+					setHeroQueue(data);
+				}
 			} finally {
 				setLoading(false);
 			}
 		};
-		fetchDestinations();
+		fetchHeroSlides();
 	}, []);
 
 	useEffect(() => {
@@ -45,111 +40,152 @@ export default function GalleryHero({ onDestinationChange }) {
 		return () => clearInterval(timerId);
 	}, []);
 
-	const activeTrackIndex = destinations.length > 0 && activeDestination 
-		? destinations.findIndex(d => d._id === activeDestination._id) 
-		: 0;
+
+
+	const handleNext = () => {
+		setHeroQueue((prev) => {
+			if (prev.length <= 1) return prev;
+			return [...prev.slice(1), prev[0]];
+		});
+	};
+
+	const handlePrev = () => {
+		setHeroQueue((prev) => {
+			if (prev.length <= 1) return prev;
+			return [prev[prev.length - 1], ...prev.slice(0, -1)];
+		});
+	};
+
+	const handleThumbnailClick = (clickedIndex) => {
+		if (clickedIndex === 0) return;
+		
+		setHeroQueue((prev) => {
+			const clickedItem = prev[clickedIndex];
+			const previousFirst = prev[0];
+			const middleItems = prev.filter((_, index) => index !== 0 && index !== clickedIndex);
+			
+			return [clickedItem, ...middleItems, previousFirst];
+		});
+	};
+
+	// Propagate active destination change to parent (GalleryPage)
+	useEffect(() => {
+		if (heroQueue.length > 0 && onDestinationChange) {
+			// We try to mimic the old location object, or just pass the full object so the parent can extract location info.
+			onDestinationChange(heroQueue[0]);
+		}
+	}, [heroQueue[0]]);
+
 
 	if (loading) return <div className="h-[100dvh] bg-black flex items-center justify-center text-white">Loading Gallery...</div>;
-	if (destinations.length === 0) return <div className="h-[100dvh] bg-black flex items-center justify-center text-white">No destinations found.</div>;
+	if (heroQueue.length === 0) return <div className="h-[100dvh] bg-black flex items-center justify-center text-white">No gallery hero images available yet.</div>;
 
+	const activeHero = heroQueue[0];
 
 	return (
 		<header className="relative isolate w-full h-[100dvh] min-h-[600px] overflow-hidden bg-black">
-			<div 
-				className="absolute inset-0 z-0 flex w-full h-full transition-transform duration-700 ease-in-out"
-				style={{ transform: `translateX(-${activeTrackIndex * 100}%)` }}
-			>
-				{destinations.map(location => (
+			{/* Big Background - Fading active hero */}
+			<div className="absolute inset-0 z-0">
+				{heroQueue.map((hero, idx) => (
 					<div
-						key={location._id}
-						className="w-full h-full flex-shrink-0 bg-center bg-no-repeat [background-size:100%_100%] transition-opacity duration-1000 opacity-80"
-						style={{ backgroundImage: `url('${getImageSrc(location.image)}')` }}
+						key={hero._id}
+						className={`absolute inset-0 w-full h-full bg-center bg-cover bg-no-repeat transition-opacity duration-1000 ease-in-out ${
+							idx === 0 ? 'opacity-80' : 'opacity-0'
+						}`}
+						style={{ backgroundImage: `url('${getImageSrc(hero.image)}')` }}
 					/>
 				))}
 			</div>
 
-			<div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-black/55 via-black/15 to-transparent" />
-			<div className="absolute inset-x-0 bottom-0 h-56 z-10 pointer-events-none bg-gradient-to-t from-black/80 via-black/35 to-transparent" />
+			<div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
+			<div className="absolute inset-x-0 bottom-0 h-48 sm:h-56 z-10 pointer-events-none bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
 			{isNightView && <div className="absolute inset-0 z-10 pointer-events-none bg-indigo-950/15" />}
 
-			<div className="relative z-20 flex flex-col justify-between h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pt-8 pb-40 md:pt-16 md:pb-60">
+			<div className="relative z-20 flex flex-col justify-between h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pt-12 pb-48 md:pt-20 md:pb-64">
 				
 				<div className="flex flex-col items-start max-w-2xl mt-4">
 					<span className="mb-4 inline-block text-[10px] font-extrabold uppercase tracking-[0.45em] text-[#d66847]">
-						THE MAJESTY OF SRI LANKA
+						{activeHero.category || 'THE MAJESTY OF SRI LANKA'}
 					</span>
 
-					<h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.12] text-white [text-shadow:0_4px_20px_rgba(0,0,0,0.7)]">
-						Explore the Soul<br />of the Island
+					<h1 className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-[1.1] text-white [text-shadow:0_4px_20px_rgba(0,0,0,0.7)] drop-shadow-xl transition-all duration-700">
+						{activeHero.title}
 					</h1>
 
-					<p className="max-w-lg mt-5 text-sm leading-relaxed text-white/80 [text-shadow:0_2px_8px_rgba(0,0,0,0.5)]">
-						Ascend ancient rock fortresses, wander through misty tea plantations,
-						and witness the untamed beauty of wildlife in their natural sanctuary.
+					<p className="max-w-lg mt-6 text-sm lg:text-base leading-relaxed text-white/90 [text-shadow:0_2px_8px_rgba(0,0,0,0.5)] transition-all duration-700">
+						{activeHero.subtitle}
 					</p>
 
-					<div className="flex items-center gap-4 mt-8">
-						<button
-							type="button"
-							onClick={() => navigate('/booking')}
-							className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-[#a64b2a] text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-[#a64b2a]/30 transition-all duration-300 hover:bg-[#913d1e] active:scale-95"
-						>
-							<span>Book Experience</span>
-							<svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-								<path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-							</svg>
-						</button>
-
-						<button
-							type="button"
-							aria-label="Add to wishlist"
-							className="flex items-center justify-center w-12 h-12 rounded-xl border border-white/20 bg-white/10 text-white backdrop-blur-md transition-all duration-300 hover:bg-white/20 hover:border-white/40 active:scale-95"
-						>
-							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-								<path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-							</svg>
-						</button>
-					</div>
+					{activeHero.location && (
+						<div className="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
+							<span className="text-[#d66847]">📍</span>
+							<span className="text-xs font-bold text-white uppercase tracking-widest">{activeHero.location}</span>
+						</div>
+					)}
 				</div>
 			</div>
 
-			<div className="absolute z-20 bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 w-full max-w-6xl mx-auto px-4 md:px-8">
-				{destinations.map(location => {
-					const isActive = activeDestination && activeDestination._id === location._id;
-					
-					return (
-						<button
-							key={location._id}
-							type="button"
-							onClick={() => {
-								if (onDestinationChange) onDestinationChange(location);
-							}}
-							className={`
-								group relative text-left overflow-hidden rounded-xl h-32 md:h-48 transition-all duration-300 hover:scale-105
-								${isActive 
-									? 'z-10 scale-[1.02] border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] opacity-100' 
-									: 'scale-95 border border-white/20 opacity-75 hover:border-white/40 hover:opacity-100'
-								}
-							`}
+			{/* Thumbnail Queue Overlay */}
+			<div className="absolute z-20 bottom-6 md:bottom-10 right-4 md:right-8 lg:right-12 flex flex-col items-end gap-4 max-w-full">
+				
+				{heroQueue.length > 1 && (
+					<div className="flex items-center gap-3 mb-2 z-30">
+						<button 
+							onClick={handlePrev}
+							className="w-10 h-10 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 hover:bg-white/20 transition-all hover:scale-105 active:scale-95"
 						>
-							<div 
-								className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-								style={{ backgroundImage: `url('${getImageSrc(location.image)}')` }}
-							/>
-
-							<div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-
-							<div className="absolute inset-0 flex flex-col justify-end h-full p-4 z-10">
-								<span className={`mb-1.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest leading-none ${isActive ? 'text-orange-400' : 'text-white/80 group-hover:text-white'}`}>
-									{location.region}
-								</span>
-								<span className="text-sm sm:text-base font-bold text-white leading-tight truncate">
-									{location.title}
-								</span>
-							</div>
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+								<path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+							</svg>
 						</button>
-					);
-				})}
+						<button 
+							onClick={handleNext}
+							className="w-10 h-10 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 hover:bg-white/20 transition-all hover:scale-105 active:scale-95"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+								<path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+							</svg>
+						</button>
+					</div>
+				)}
+
+				<div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 snap-x max-w-[90vw] md:max-w-2xl custom-scrollbar scrollbar-hide">
+					{heroQueue.map((item, index) => {
+						const isActive = index === 0;
+						return (
+							<button
+								key={item._id}
+								type="button"
+								onClick={() => handleThumbnailClick(index)}
+								className={`
+									flex-shrink-0 group relative overflow-hidden rounded-xl h-24 w-36 md:h-32 md:w-48 transition-all duration-300 snap-center
+									${isActive 
+										? 'border-2 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.4)] opacity-100 scale-100 cursor-default' 
+										: 'border border-white/20 opacity-70 hover:opacity-100 hover:scale-105 scale-95 cursor-pointer hover:border-white/50'
+									}
+								`}
+							>
+								<div 
+									className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+									style={{ backgroundImage: `url('${getImageSrc(item.image)}')` }}
+								/>
+								<div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+								
+								<div className="absolute inset-0 flex flex-col justify-end p-3 z-10 text-left">
+									{item.location && (
+										<span className={`mb-1 text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider leading-none ${isActive ? 'text-orange-400' : 'text-white/80 group-hover:text-white'}`}>
+											{item.location}
+										</span>
+									)}
+									<span className="text-xs sm:text-sm font-bold text-white leading-tight truncate drop-shadow-md">
+										{item.title}
+									</span>
+								</div>
+							</button>
+						);
+					})}
+				</div>
+
 			</div>
 		</header>
 	);

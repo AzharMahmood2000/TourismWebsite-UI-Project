@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import AdminSidebar from '../Components/AdminSidebar';
 import AdminTopbar from '../Components/AdminTopbar';
 import API_BASE_URL from '../api/api';
+import AlertMessage from '../Components/AlertMessage';
+import EmptyState from '../Components/EmptyState';
+import LoadingState from '../Components/LoadingState';
 
 const ManageUsers = () => {
   const navigate = useNavigate();
@@ -11,6 +14,7 @@ const ManageUsers = () => {
   const [error, setError] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [actionMessage, setActionMessage] = useState(null);
 
   const fetchUsers = async () => {
     try {
@@ -47,7 +51,7 @@ const ManageUsers = () => {
         if (!token) throw new Error("No token found");
 
         if (userInfo._id === id) {
-           alert("You cannot delete your own admin account.");
+           setActionMessage({ type: 'error', title: 'Action Denied', text: 'You cannot delete your own admin account.' });
            return;
         }
 
@@ -63,8 +67,9 @@ const ManageUsers = () => {
         }
         
         fetchUsers();
+        setActionMessage({ type: 'success', title: 'User Deleted', text: 'User has been permanently removed.' });
       } catch (err) {
-        alert(err.message);
+        setActionMessage({ type: 'error', title: 'Deletion Failed', text: err.message });
       }
     }
   };
@@ -79,6 +84,9 @@ const ManageUsers = () => {
 
         {/* Page Content */}
         <div className="px-10 py-8 bg-[#FAFAFA] min-h-[calc(100vh-80px)]">
+           {actionMessage && (
+             <div className="mb-6"><AlertMessage type={actionMessage.type} title={actionMessage.title} message={actionMessage.text} onClose={() => setActionMessage(null)} /></div>
+           )}
            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
              <div>
                 <h2 className="text-3xl font-extrabold text-gray-900">Manage Users</h2>
@@ -103,15 +111,15 @@ const ManageUsers = () => {
                    <tbody className="divide-y divide-gray-200">
                       {loading ? (
                         <tr>
-                          <td colSpan="6" className="px-6 py-8 text-center text-gray-500 font-medium">Loading customers...</td>
+                          <td colSpan="6" className="p-0"><LoadingState message="Loading customers..." /></td>
                         </tr>
                       ) : error ? (
                         <tr>
-                          <td colSpan="6" className="px-6 py-8 text-center text-red-500 font-medium">{error}</td>
+                          <td colSpan="6" className="p-4"><AlertMessage type="error" title="Failed to load users" message={error} onClose={() => setError(null)} actionText="Try Again" onAction={fetchUsers} /></td>
                         </tr>
                       ) : users.length === 0 ? (
                         <tr>
-                          <td colSpan="6" className="px-6 py-8 text-center text-gray-500 font-medium">No customers found.</td>
+                          <td colSpan="6" className="p-6"><EmptyState title="No customers found" message="No user accounts are registered yet." /></td>
                         </tr>
                       ) : (
                         users.map((user) => {

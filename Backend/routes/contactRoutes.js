@@ -7,12 +7,13 @@ const {
 } = require("../controllers/contactController");
 
 const { protect } = require("../middleware/authMiddleware");
+const { adminOnly } = require("../middleware/adminMiddleware");
 
 const router = express.Router();
 
 router.post("/", createContactMessage);
-router.get("/", protect, getContactMessages);
-router.put("/:id/read", protect, markAsRead);
-router.delete("/:id", protect, deleteMessage);
+router.get("/", protect, adminOnly, getContactMessages);
+router.put("/:id/read", protect, adminOnly, markAsRead);
+router.delete("/:id", protect, adminOnly, deleteMessage);
 
 module.exports = router;

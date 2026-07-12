@@ -415,6 +415,13 @@ export default function BookingPage() {
 				className={!isAuthenticated ? 'pointer-events-none select-none' : ''}
 				style={!isAuthenticated ? { userSelect: 'none' } : {}}
 			>
+			{(!queryDestinationId && !queryPackageId) ? (
+				<div className="flex flex-col items-center justify-center py-32 text-center h-full min-h-[50vh]">
+					<h2 className="text-xl font-bold text-slate-800">
+						Please select a destination or package to continue booking.
+					</h2>
+				</div>
+			) : (
 			<section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
 
 				{/* ════════════════════════════════════════════
@@ -845,7 +852,7 @@ export default function BookingPage() {
 					</div>
 				</div>
 			</section>
-
+			)}
 			<Footer />
 			</div>{/* end inert content wrapper */}
 		</div>

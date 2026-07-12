@@ -3,12 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import AdminSidebar from '../Components/AdminSidebar';
 import AdminTopbar from '../Components/AdminTopbar';
 import API_BASE_URL from '../api/api';
+import AlertMessage from '../Components/AlertMessage';
+import EmptyState from '../Components/EmptyState';
+import LoadingState from '../Components/LoadingState';
 
 const ManageBookings = () => {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionMessage, setActionMessage] = useState(null);
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -48,11 +52,12 @@ const ManageBookings = () => {
       });
       if (res.ok) {
         fetchBookings();
+        setActionMessage({ type: 'success', title: 'Status Updated', text: 'Booking status was successfully updated.' });
       } else {
-        alert("Failed to update status");
+        setActionMessage({ type: 'error', title: 'Update Failed', text: 'Failed to update booking status.' });
       }
     } catch (err) {
-      alert("Error updating status");
+      setActionMessage({ type: 'error', title: 'Update Error', text: 'An error occurred while updating the status.' });
     }
   };
 
@@ -66,17 +71,18 @@ const ManageBookings = () => {
        });
        if (res.ok) {
          fetchBookings();
+         setActionMessage({ type: 'success', title: 'Booking Deleted', text: 'The booking was permanently removed.' });
        } else {
-         alert("Failed to delete booking");
+         setActionMessage({ type: 'error', title: 'Deletion Failed', text: 'Failed to delete booking.' });
        }
      } catch (err) {
-       alert("Error deleting booking");
+       setActionMessage({ type: 'error', title: 'Deletion Error', text: 'An error occurred while deleting the booking.' });
      }
   };
 
   const exportToCSV = () => {
     if (bookings.length === 0) {
-      alert("No bookings available to export.");
+      setActionMessage({ type: 'warning', title: 'Export Empty', text: 'No bookings available to export.' });
       return;
     }
 
@@ -158,10 +164,13 @@ const ManageBookings = () => {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-white">
         {/* Top Header */}
-        <AdminTopbar showSearch={true} />
+        <AdminTopbar showSearch={true} searchPlaceholder="Search bookings by ID or name..." />
 
         {/* Page Content */}
-        <div className="px-10 py-8 bg-white min-h-[calc(100vh-80px)]">
+        <div className="px-10 py-8 bg-[#FAFAFA] min-h-[calc(100vh-80px)]">
+           {actionMessage && (
+             <div className="mb-6"><AlertMessage type={actionMessage.type} title={actionMessage.title} message={actionMessage.text} onClose={() => setActionMessage(null)} /></div>
+           )}
            <div className="flex justify-between items-start mb-8">
              <div>
                 <h2 className="text-[40px] font-extrabold text-gray-900 leading-none mb-3 tracking-tight">Manage Bookings</h2>
@@ -247,11 +256,15 @@ const ManageBookings = () => {
                    </thead>
                    <tbody className="divide-y divide-gray-100">
                       {loading ? (
-                        <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">Loading bookings...</td></tr>
+                        <tr><td colSpan="6" className="p-0"><LoadingState message="Loading bookings..." /></td></tr>
                       ) : error ? (
-                        <tr><td colSpan="6" className="px-6 py-8 text-center text-red-500 text-sm font-semibold">{error}</td></tr>
+                        <tr><td colSpan="6" className="p-4">
+                          <AlertMessage type="error" title="Failed to load bookings" message={error} onClose={() => setError("")} actionText="Try Again" onAction={fetchBookings} />
+                        </td></tr>
                       ) : bookings.length === 0 ? (
-                        <tr><td colSpan="6" className="px-6 py-8 text-center text-gray-500">No bookings found.</td></tr>
+                        <tr><td colSpan="6" className="p-6">
+                          <EmptyState title="No bookings found" message="New bookings will appear here once users submit them." />
+                        </td></tr>
                       ) : bookings.map((booking) => {
                          const customerName = booking.fullName || booking.user?.name || "Unknown";
                          const phone = booking.phone || booking.user?.phone || "Not provided";

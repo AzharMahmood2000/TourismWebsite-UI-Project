@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import AdminSidebar from '../Components/AdminSidebar';
 import AdminTopbar from '../Components/AdminTopbar';
 import API_BASE_URL, { authHeaders } from '../api/api';
+import AlertMessage from '../Components/AlertMessage';
+import EmptyState from '../Components/EmptyState';
+import LoadingState from '../Components/LoadingState';
 
 /* ── Helper: status badge colors (PascalCase) ── */
 const statusBadge = (status) => {
@@ -101,9 +104,7 @@ const Dashboard = () => {
 
           {/* Error State */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-medium">
-              {error}
-            </div>
+            <AlertMessage type="error" title="Dashboard Error" message={error} onClose={() => setError('')} actionText="Retry" onAction={() => window.location.reload()} />
           )}
 
           {/* Loading skeleton for stat cards */}
@@ -252,8 +253,8 @@ const Dashboard = () => {
                       })
                     ) : (
                       <tr>
-                        <td colSpan="5" className="px-6 py-8 text-center text-gray-400 text-sm">
-                          No bookings found yet.
+                        <td colSpan="5" className="p-6">
+                           <EmptyState title="No recent bookings" message="There are no active booking activities available." />
                         </td>
                       </tr>
                     )}

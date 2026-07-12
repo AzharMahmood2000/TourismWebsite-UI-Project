@@ -9,15 +9,16 @@ const {
 } = require("../controllers/packageController");
 
 const { protect } = require("../middleware/authMiddleware");
+const { adminOnly } = require("../middleware/adminMiddleware");
 
 const router = express.Router();
 
-router.get("/admin/all", protect, getAllPackagesAdmin);
+router.get("/admin/all", protect, adminOnly, getAllPackagesAdmin);
 
 router.get("/", getPackages);
 router.get("/:idOrSlug", getPackageById);
-router.post("/", protect, createPackage);
-router.put("/:id", protect, updatePackage);
-router.delete("/:id", protect, deletePackage);
+router.post("/", protect, adminOnly, createPackage);
+router.put("/:id", protect, adminOnly, updatePackage);
+router.delete("/:id", protect, adminOnly, deletePackage);
 
 module.exports = router;

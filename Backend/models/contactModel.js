@@ -24,6 +24,10 @@ const contactSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    preferredTravelCategory: {
+      type: String,
+      default: "",
+    },
     status: {
       type: String,
       enum: ["New", "Read", "Replied"],

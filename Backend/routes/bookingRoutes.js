@@ -8,6 +8,7 @@ const {
 } = require("../controllers/bookingController");
 
 const { protect } = require("../middleware/authMiddleware");
+const { adminOnly } = require("../middleware/adminMiddleware");
 
 const router = express.Router();
 
@@ -16,8 +17,8 @@ router.get("/mybookings", protect, getMyBookings);
 router.get("/my-bookings", protect, getMyBookings); // support both formats
 
 // Admin routes
-router.get("/admin/all", protect, getAllBookings);
-router.put("/:id/status", protect, updateBookingStatus);
-router.delete("/:id", protect, deleteBooking);
+router.get("/admin/all", protect, adminOnly, getAllBookings);
+router.put("/:id/status", protect, adminOnly, updateBookingStatus);
+router.delete("/:id", protect, adminOnly, deleteBooking);
 
 module.exports = router;

@@ -8,13 +8,14 @@ const {
 } = require("../controllers/destinationController");
 
 const { protect } = require("../middleware/authMiddleware");
+const { adminOnly } = require("../middleware/adminMiddleware");
 
 const router = express.Router();
 
 router.get("/", getDestinations);
-router.post("/", protect, createDestination);
+router.post("/", protect, adminOnly, createDestination);
 router.get("/:idOrSlug", getDestinationByIdOrSlug);
-router.put("/:id", protect, updateDestination);
-router.delete("/:id", protect, deleteDestination);
+router.put("/:id", protect, adminOnly, updateDestination);
+router.delete("/:id", protect, adminOnly, deleteDestination);
 
 module.exports = router;

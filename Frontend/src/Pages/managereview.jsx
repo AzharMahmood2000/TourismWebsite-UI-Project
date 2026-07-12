@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AdminSidebar from '../Components/AdminSidebar';
 import AdminTopbar from '../Components/AdminTopbar';
+import AlertMessage from '../Components/AlertMessage';
+import EmptyState from '../Components/EmptyState';
+import LoadingState from '../Components/LoadingState';
 
 const renderStars = (rating) => {
   return (
@@ -20,6 +23,7 @@ const ManageReview = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [actionMessage, setActionMessage] = useState(null);
 
   const fetchReviews = async () => {
     try {
@@ -64,7 +68,7 @@ const ManageReview = () => {
       if (!res.ok) throw new Error("Failed to update status");
       fetchReviews();
     } catch (error) {
-      alert(error.message);
+      setActionMessage({ type: 'error', title: 'Update Failed', text: error.message });
     }
   };
 
@@ -82,8 +86,9 @@ const ManageReview = () => {
       });
       if (!res.ok) throw new Error("Failed to delete review");
       fetchReviews();
+      setActionMessage({ type: 'success', title: 'Review Deleted', text: 'The review has been permanently removed.' });
     } catch (error) {
-      alert(error.message);
+      setActionMessage({ type: 'error', title: 'Deletion Failed', text: error.message });
     }
   };
 
@@ -107,6 +112,9 @@ const ManageReview = () => {
 
         {/* Path/Title */}
         <div className="px-10 py-8 bg-[#FAFAFA] min-h-[calc(100vh-80px)]">
+           {actionMessage && (
+             <div className="mb-6"><AlertMessage type={actionMessage.type} title={actionMessage.title} message={actionMessage.text} onClose={() => setActionMessage(null)} /></div>
+           )}
            <div className="flex justify-between items-start mb-8">
              <div>
                 <h2 className="text-3xl font-extrabold text-gray-900">Manage Reviews</h2>
@@ -169,13 +177,13 @@ const ManageReview = () => {
                          <th className="px-6 py-4 text-xs font-bold text-gray-700 text-center">Actions</th>
                       </tr>
                    </thead>
-                   <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-gray-200">
                       {loading ? (
-                        <tr><td colSpan="5" className="text-center py-10 text-gray-500 font-medium">Loading reviews...</td></tr>
+                        <tr><td colSpan="5" className="p-0"><LoadingState message="Loading reviews..." /></td></tr>
                       ) : error ? (
-                        <tr><td colSpan="5" className="text-center py-10 text-red-500 font-medium">{error}</td></tr>
+                        <tr><td colSpan="5" className="p-4"><AlertMessage type="error" title="Failed to load reviews" message={error} onClose={() => setError("")} actionText="Try Again" onAction={fetchReviews} /></td></tr>
                       ) : reviews.length === 0 ? (
-                        <tr><td colSpan="5" className="text-center py-10 text-gray-500 font-medium">No reviews found.</td></tr>
+                        <tr><td colSpan="5" className="p-6"><EmptyState title="No reviews found" message="Guest experiences will appear pending administrative validation." /></td></tr>
                       ) : (
                         reviews.map((rev) => (
                           <tr key={rev._id} className="hover:bg-gray-50 transition-colors">

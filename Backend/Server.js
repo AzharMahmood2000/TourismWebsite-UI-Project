@@ -15,6 +15,7 @@ const bookingRoutes = require("./routes/bookingRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
+const galleryRoutes = require("./routes/galleryRoutes");
 
 dotenv.config();
 
@@ -63,6 +64,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/admin", dashboardRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/gallery", galleryRoutes);
 
 const PORT = process.env.PORT || 5000;
 

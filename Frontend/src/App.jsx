@@ -24,11 +24,13 @@ import ManagePackages from './Pages/ManageTourPackages';
 import ManageReviews from './Pages/managereview';
 import ManageMessages from './Pages/managemessages';
 import ManageUsers from './Pages/ManageUsers';
+import ManageGallery from './Pages/ManageGallery';
 import ManageDestinations from './Pages/managedestination';
 import ManageBookings from './Pages/managebookings';
 import AdminSettings from './Pages/AdminSettings';
 import AdminProfile from './Pages/AdminProfile';
 import NotFound from './Pages/NotFound';
+import AdminRoute from './Components/AdminRoute';
 import { Navigate } from 'react-router-dom';
 
 export default function App() {
@@ -56,18 +58,19 @@ export default function App() {
 					<Route path="/profile" element={<ProfilePage />} />
 					<Route path="*" element={<NotFound />} />
 
-					{/* Admin Routes */}
-					<Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
-					<Route path="/admin/dashboard" element={<Dashboard />} />
-					<Route path="/admin/insights" element={<Insights />} />
-					<Route path="/admin/packages" element={<ManagePackages />} />
-					<Route path="/admin/reviews" element={<ManageReviews />} />
-					<Route path="/admin/messages" element={<ManageMessages />} />
-					<Route path="/admin/destinations" element={<ManageDestinations />} />
-					<Route path="/admin/bookings" element={<ManageBookings />} />
-					<Route path="/admin/users" element={<ManageUsers />} />
-					<Route path="/admin/settings" element={<AdminSettings />} />
-					<Route path="/admin/profile" element={<AdminProfile />} />
+					{/* Admin Routes — protected by AdminRoute */}
+					<Route path="/admin" element={<AdminRoute><Navigate to="/admin/dashboard" replace /></AdminRoute>} />
+					<Route path="/admin/dashboard" element={<AdminRoute><Dashboard /></AdminRoute>} />
+					<Route path="/admin/insights" element={<AdminRoute><Insights /></AdminRoute>} />
+					<Route path="/admin/packages" element={<AdminRoute><ManagePackages /></AdminRoute>} />
+					<Route path="/admin/gallery" element={<AdminRoute><ManageGallery /></AdminRoute>} />
+					<Route path="/admin/reviews" element={<AdminRoute><ManageReviews /></AdminRoute>} />
+					<Route path="/admin/messages" element={<AdminRoute><ManageMessages /></AdminRoute>} />
+					<Route path="/admin/destinations" element={<AdminRoute><ManageDestinations /></AdminRoute>} />
+					<Route path="/admin/bookings" element={<AdminRoute><ManageBookings /></AdminRoute>} />
+					<Route path="/admin/users" element={<AdminRoute><ManageUsers /></AdminRoute>} />
+					<Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+					<Route path="/admin/profile" element={<AdminRoute><AdminProfile /></AdminRoute>} />
 				</Routes>
 			</BrowserRouter>
 		</AuthProvider>

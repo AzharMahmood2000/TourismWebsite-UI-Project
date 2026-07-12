@@ -57,36 +57,58 @@ export default function Navbar() {
 		}
 	};
 
-	const renderAvatar = () => {
-		if (isAuthenticated && user?.avatar) {
-			return (
-				<img
-					src={user.avatar}
-					alt={user.name || 'User'}
-					className="w-full h-full object-cover rounded-full"
-				/>
-			);
-		}
+	const renderProfileSection = () => {
+		const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
+		const userName = userInfo?.name || userInfo?.username || "User";
+		const avatarUrl = userInfo?.avatarUrl || userInfo?.avatar || "";
+		const userRole = userInfo?.role || "user";
+
 		if (isAuthenticated) {
-			const initials = (user?.name || 'U')
+			const initials = userName
 				.split(' ')
 				.map((n) => n[0])
 				.join('')
 				.toUpperCase()
 				.slice(0, 2);
+
 			return (
-				<div className="w-full h-full flex items-center justify-center bg-[#d66847]/10 text-[#d66847] text-xs font-bold rounded-full">
-					{initials}
-				</div>
+				<>
+					<div className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center rounded-full overflow-hidden bg-[#d66847]/10 text-[#d66847] text-xs font-bold ring-2 ring-white">
+						{avatarUrl ? (
+							<img src={avatarUrl} alt={userName} className="w-full h-full object-cover" />
+						) : (
+							initials
+						)}
+					</div>
+					<div className="hidden sm:flex flex-col items-start pr-1">
+						<span className="text-[13px] font-bold text-slate-700 leading-tight">
+							{userName}
+						</span>
+						<span className="text-[9px] font-bold uppercase tracking-widest text-[#d66847]">
+						{userRole === 'admin' ? 'ADMIN' : 'USER'}
+					</span>
+					</div>
+				</>
 			);
 		}
+
 		return (
-			<div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200">
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
-					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
-					<circle cx="12" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" />
-				</svg>
-			</div>
+			<>
+				<div className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center bg-slate-100 text-slate-500 rounded-full">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
+						<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
+						<circle cx="12" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" />
+					</svg>
+				</div>
+				<div className="hidden sm:flex flex-col items-start pr-1">
+					<span className="text-[13px] font-bold text-slate-700 leading-tight">
+						Guest
+					</span>
+					<span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+						Log In
+					</span>
+				</div>
+			</>
 		);
 	};
 
@@ -123,16 +145,16 @@ export default function Navbar() {
 
 				{/* Right Side Actions: Avatar + Mob Controls */}
 				<div className="flex items-center gap-4">
-					{/* Profile Avatar */}
+					{/* Profile Pill */}
 					<div className="relative">
 						<button
 							id="nav-profile-btn"
 							type="button"
 							onClick={handleProfileClick}
-							className="w-9 h-9 sm:w-10 sm:h-10 rounded-full focus:outline-none focus:ring-2 focus:ring-[#d66847]/40 overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95"
+							className="flex items-center gap-2.5 px-1.5 py-1.5 sm:pr-4 sm:pl-1.5 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#d66847]/40 hover:shadow-sm active:scale-95 cursor-pointer"
 							aria-label="Profile actions"
 						>
-							{renderAvatar()}
+							{renderProfileSection()}
 						</button>
 					</div>
 
@@ -192,6 +214,21 @@ export default function Navbar() {
 									>
 										My Profile
 									</Link>
+									{(() => {
+										const mobileUserInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
+										if (mobileUserInfo?.role === 'admin') {
+											return (
+												<Link
+													to="/admin/dashboard"
+													onClick={() => setMobileMenuOpen(false)}
+													className="text-base font-bold text-[#d66847] hover:text-[#b5522f] transition-colors"
+												>
+													Admin Panel
+												</Link>
+											);
+										}
+										return null;
+									})()}
 									<button
 										type="button"
 										onClick={() => {

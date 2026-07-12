@@ -1,69 +1,171 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '../Components/Navbar';
 import Footer from '../Components/Footer';
+import API_BASE_URL from '../api/api';
 
 export default function AboutPage() {
+	const [aboutData, setAboutData] = useState(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(false);
+
 	useEffect(() => {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
+		const fetchAbout = async () => {
+			try {
+				setLoading(true);
+				const res = await fetch(`${API_BASE_URL}/api/about`);
+				if (!res.ok) throw new Error("Failed to fetch");
+				const data = await res.json();
+				setAboutData(data);
+			} catch (error) {
+				console.error('Error fetching about data:', error);
+				setError(true);
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchAbout();
 	}, []);
+
+	const getImageUrl = (image) => {
+	  if (!image) return "/fallback-image.jpg";
+	  if (image.startsWith("http")) return image;
+	  return `${API_BASE_URL}${image.startsWith("/") ? image : `/${image}`}`;
+	};
+
+	if (loading) {
+		return (
+			<div className="min-h-screen flex items-center justify-center font-sans text-lg text-gray-500">
+				Loading about information...
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="min-h-screen flex items-center justify-center font-sans text-lg text-red-500">
+				Unable to load about information.
+			</div>
+		);
+	}
+
+	if (!aboutData || (!aboutData.hero && !aboutData.story && !aboutData.members?.length)) {
+		return (
+			<div className="min-h-screen flex flex-col font-sans">
+				<Navbar />
+				<div className="flex-1 flex items-center justify-center text-lg text-gray-500">
+					About information will be available soon.
+				</div>
+				<Footer />
+			</div>
+		);
+	}
+
+	const heroTitle = aboutData?.hero?.title || "";
+	const heroSubtitle = aboutData?.hero?.subtitle || "";
+	const heroImage = aboutData?.hero?.image ? getImageUrl(aboutData.hero.image) : "";
+
+	const storyTitle = aboutData?.story?.title || "";
+	const storySubtitle = aboutData?.story?.subtitle || "";
+	const storyDesc = aboutData?.story?.description || "";
+	const storyImage = aboutData?.story?.image ? getImageUrl(aboutData.story.image) : "";
+
+	const missionText = aboutData?.mission || "";
+	const visionText = aboutData?.vision || "";
+
+	// The API returns already active and sorted members.
+	const members = aboutData?.members || [];
 
 	return (
 		<div className="min-h-screen bg-[#fffaf8] relative w-full block font-sans">
 			<Navbar />
 
 			{/* ════════════════════════════════════════════
-			    "OUR HERITAGE" SPLIT SECTION
+			    HERO SECTION (CONDITIONAL OR NEWLY ADDED AS REQUIRED)
 			    ════════════════════════════════════════════ */}
-			<section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-				<div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-					{/* Left: Narrative Content */}
-					<div>
+			{heroTitle && (
+				<section className="relative w-full h-[300px] md:h-[400px] bg-slate-900 overflow-hidden flex items-center justify-center">
+					{heroImage && (
+						<img src={heroImage} alt="Hero" className="absolute inset-0 w-full h-full object-cover opacity-50" />
+					)}
+					<div className="relative z-10 text-center px-4">
 						<span className="text-[11px] font-bold text-[#d66847] uppercase tracking-[0.35em] block mb-3">
-							OUR HERITAGE
+							{heroSubtitle}
 						</span>
-						<h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight mb-6">
-							Our Journey & Philosophy
+						<h1 className="text-3xl md:text-5xl font-extrabold text-white">
+							{heroTitle}
 						</h1>
-						
-						<p className="text-sm leading-relaxed text-slate-500 mb-5">
-							Founded on the principle of "Refined Discovery," Travelarch was born from a desire to 
-							showcase the pearl of the Indian Ocean—Sri Lanka—through a lens of high-fidelity curation. 
-							We believe that true travel is an analog experience in a digital world; it's the tactile 
-							feel of ancient stone, the scent of morning tea mist, and the sound of distant temple bells.
-						</p>
-
-						<p className="text-sm leading-relaxed text-slate-500">
-							Our philosophy rejects the generic in favor of the precise. We craft journeys that respect 
-							the quiet transitions of the day, moving from the golden light of the southern coast to the 
-							cool, crisp shadows of the central highlands. For the discerning traveler, we offer not 
-							just a destination, but a serene transition into the extraordinary.
-						</p>
 					</div>
+				</section>
+			)}
 
-					{/* Right: Visual Asset with Overlapping Floating Badge */}
-					<div className="relative w-full max-w-md lg:max-w-none mx-auto lg:ml-auto pr-4 lg:pr-0">
-						<div className="relative overflow-hidden rounded-lg">
-							<img
-								src="/assets/images/about_tea_estate.jpg"
-								alt="Scenic Misty Tea Estate"
-								className="w-full h-[450px] object-cover rounded-lg shadow-sm block hover:scale-102 transition-transform duration-700"
-							/>
-							{/* Light ambient overlay */}
-							<div className="absolute inset-0 bg-[#d66847]/5 pointer-events-none" />
-						</div>
-
-						{/* Overlapping Floating Badge Stats Box */}
-						<div className="bg-white p-6 shadow-lg border border-slate-100 max-w-[200px] absolute bottom-6 -left-8 sm:-left-12 z-10 rounded-sm">
-							<span className="text-3xl font-extrabold text-[#d66847] leading-none block">
-								12+
+			{/* ════════════════════════════════════════════
+			    "OUR HERITAGE" / STORY SECTION
+			    ════════════════════════════════════════════ */}
+			{(storyTitle || storyDesc) && (
+				<section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+						{/* Left: Narrative Content */}
+						<div>
+							<span className="text-[11px] font-bold text-[#d66847] uppercase tracking-[0.35em] block mb-3">
+								{storySubtitle}
 							</span>
-							<p className="text-[11px] font-semibold text-slate-500 leading-relaxed mt-2.5">
-								Years of curating high-fidelity cultural immersions.
-							</p>
+							<h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight mb-6">
+								{storyTitle}
+							</h2>
+							
+							{storyDesc.split('\n').map((para, idx) => (
+								<p key={idx} className="text-sm leading-relaxed text-slate-500 mb-5 whitespace-pre-line">
+									{para}
+								</p>
+							))}
+
+							{/* Display Mission and Vision optionally here if they override defaults */}
+							{(missionText || visionText) && (
+								<div className="mt-8 pt-8 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
+									{missionText && (
+										<div>
+											<h4 className="font-bold text-slate-900 mb-2">Our Mission</h4>
+											<p className="text-xs text-slate-500 leading-relaxed">{missionText}</p>
+										</div>
+									)}
+									{visionText && (
+										<div>
+											<h4 className="font-bold text-slate-900 mb-2">Our Vision</h4>
+											<p className="text-xs text-slate-500 leading-relaxed">{visionText}</p>
+										</div>
+									)}
+								</div>
+							)}
+						</div>
+
+						{/* Right: Visual Asset with Overlapping Floating Badge */}
+						<div className="relative w-full max-w-md lg:max-w-none mx-auto lg:ml-auto pr-4 lg:pr-0">
+							<div className="relative overflow-hidden rounded-lg">
+								{storyImage && (
+									<img
+										src={storyImage}
+										alt="Story Visual"
+										className="w-full h-[450px] object-cover rounded-lg shadow-sm block hover:scale-102 transition-transform duration-700"
+									/>
+								)}
+								{/* Light ambient overlay */}
+								<div className="absolute inset-0 bg-[#d66847]/5 pointer-events-none" />
+							</div>
+
+							{/* Overlapping Floating Badge Stats Box */}
+							<div className="bg-white p-6 shadow-lg border border-slate-100 max-w-[200px] absolute bottom-6 -left-8 sm:-left-12 z-10 rounded-sm">
+								<span className="text-3xl font-extrabold text-[#d66847] leading-none block">
+									12+
+								</span>
+								<p className="text-[11px] font-semibold text-slate-500 leading-relaxed mt-2.5">
+									Years of curating high-fidelity cultural immersions.
+								</p>
+							</div>
 						</div>
 					</div>
-				</div>
-			</section>
+				</section>
+			)}
 
 			{/* ════════════════════════════════════════════
 			    "CORE VALUES" CARD GRID MODULE
@@ -158,67 +260,30 @@ export default function AboutPage() {
 						</p>
 					</div>
 
-					{/* 4-Column Professional Grid Setup */}
+					{/* Responsive Professional Grid Setup */}
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-						{/* Card 1: Arjuna Perera */}
-						<div className="flex flex-col">
-							<img
-								src="/assets/images/arjuna.jpg"
-								alt="Arjuna Perera Portrait"
-								className="w-full h-80 object-cover rounded-md shadow-sm block hover:shadow-md transition-shadow duration-300"
-							/>
-							<h3 className="mt-4 text-sm font-bold text-slate-900 leading-tight">
-								Arjuna Perera
-							</h3>
-							<span className="text-xs font-semibold text-[#d66847] mt-1">
-								Chief Cultural Liaison
-							</span>
-						</div>
-
-						{/* Card 2: Kavindi Silva */}
-						<div className="flex flex-col">
-							<img
-								src="/assets/images/kavindi.jpg"
-								alt="Kavindi Silva Portrait"
-								className="w-full h-80 object-cover rounded-md shadow-sm block hover:shadow-md transition-shadow duration-300"
-							/>
-							<h3 className="mt-4 text-sm font-bold text-slate-900 leading-tight">
-								Kavindi Silva
-							</h3>
-							<span className="text-xs font-semibold text-[#d66847] mt-1">
-								Head of Naturalist Expeditions
-							</span>
-						</div>
-
-						{/* Card 3: Gamini Ratnayake */}
-						<div className="flex flex-col">
-							<img
-								src="/assets/images/Gamini.avif"
-								alt="Gamini Ratnayake Portrait"
-								className="w-full h-80 object-cover rounded-md shadow-sm block hover:shadow-md transition-shadow duration-300"
-							/>
-							<h3 className="mt-4 text-sm font-bold text-slate-900 leading-tight">
-								Gamini Ratnayake
-							</h3>
-							<span className="text-xs font-semibold text-[#d66847] mt-1">
-								Artisan Partner Mentor
-							</span>
-						</div>
-
-						{/* Card 4: Nilani Wickramasinghe */}
-						<div className="flex flex-col">
-							<img
-								src="/assets/images/nilani.avif"
-								alt="Nilani Wickramasinghe Portrait"
-								className="w-full h-80 object-cover rounded-md shadow-sm block hover:shadow-md transition-shadow duration-300"
-							/>
-							<h3 className="mt-4 text-sm font-bold text-slate-900 leading-tight">
-								Nilani Wickramasinghe
-							</h3>
-							<span className="text-xs font-semibold text-[#d66847] mt-1">
-								Sustainability Director
-							</span>
-						</div>
+						{members.map(member => {
+							const memberObjImage = member.image ? getImageUrl(member.image) : '/assets/images/placeholder.jpg';
+							return (
+							<div key={member._id} className="flex flex-col">
+								<img
+									src={memberObjImage}
+									alt={`${member.name} Portrait`}
+									className="w-full h-80 object-cover rounded-md shadow-sm block hover:shadow-md transition-shadow duration-300"
+								/>
+								<h3 className="mt-4 text-sm font-bold text-slate-900 leading-tight">
+									{member.name}
+								</h3>
+								<span className="text-xs font-semibold text-[#d66847] mt-1">
+									{member.position}
+								</span>
+								{member.description && (
+									<p className="mt-2 text-xs text-slate-500 line-clamp-3">
+										{member.description}
+									</p>
+								)}
+							</div>
+						)})}
 					</div>
 				</div>
 			</section>

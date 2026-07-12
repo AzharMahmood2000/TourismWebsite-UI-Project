@@ -65,6 +65,7 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/admin", dashboardRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/gallery", galleryRoutes);
+app.use("/api/about", require("./routes/aboutRoutes"));
 
 const PORT = process.env.PORT || 5000;
 
